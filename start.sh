@@ -1,43 +1,38 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# CHEEZIOUS 110% DYNAMIC FULL-STACK PERN PLATFORM LAUNCH SCRIPT
+# WHITE-LABEL MULTI-TENANT RESTAURANT SAAS PLATFORM (No-Docker Local Launch)
 # ==============================================================================
 
 set -e
 
-# 1. Resolve Node.js v24 from NVM or environment
+# 1. Resolve Node.js from NVM or environment
 if [ -d "$HOME/.nvm/versions/node/v24.14.0/bin" ]; then
   export PATH="$HOME/.nvm/versions/node/v24.14.0/bin:$PATH"
 fi
 
-echo "🍕 ======================================================="
-echo "🍕  CHEEZIOUS FULL-STACK PERN PLATFORM (TypeScript + Postgres)"
-echo "🍕 ======================================================="
-echo "Using Node $(node -v) and npm $(npm -v)"
+echo "🚀 =================================================================="
+echo "🚀  WHITE-LABEL MULTI-TENANT RESTAURANT PLATFORM (PERN + WebSockets)"
+echo "🚀 =================================================================="
+echo "Node: $(node -v) | npm: $(npm -v)"
 
-# 2. Check and start Docker PostgreSQL Database
-echo "📦 Checking PostgreSQL Database..."
-if ! docker ps | grep -q "cheezious_postgres"; then
-  echo "🚀 Starting PostgreSQL container on port 5432..."
-  docker compose up -d db
-  sleep 3
-else
-  echo "✅ PostgreSQL is running on port 5432"
-fi
-
-# 3. Start Backend Server
-echo "🚀 Starting Express + TypeScript Backend on http://localhost:5000..."
+# 2. Verify Database Connection
+echo "📦 Checking PostgreSQL Database connection..."
 cd server
 if [ ! -d "node_modules" ]; then
   npm install
 fi
-npx prisma db push --skip-generate
-npx tsx src/index.ts &
+
+echo "🔄 Generating Prisma Client..."
+npm run db:generate
+
+# Start Backend Server
+echo "🚀 Starting Express + TypeScript Multi-Tenant Backend on http://localhost:5000..."
+npm run dev &
 BACKEND_PID=$!
 cd ..
 
-# 4. Start Frontend Client
-echo "🚀 Starting React + TypeScript Frontend on http://localhost:5173..."
+# 3. Start Frontend Client
+echo "🚀 Starting React + Vite White-Label Frontend on http://localhost:5173..."
 cd client
 if [ ! -d "node_modules" ]; then
   npm install
@@ -47,14 +42,19 @@ FRONTEND_PID=$!
 cd ..
 
 echo ""
-echo "🎉 ======================================================="
-echo "🎉  CHEEZIOUS IS LIVE & RUNNING!"
-echo "🎉 ======================================================="
-echo "👉 Customer Storefront:     http://localhost:5173/"
-echo "👉 Admin & Kitchen Portal:   http://localhost:5173/ (Click '⚡ Admin / Kitchen Feed')"
-echo "👉 Backend REST API:        http://localhost:5000/api/health"
-echo "👉 PostgreSQL Database:     localhost:5432 (cheezious_db)"
-echo "=========================================================="
+echo "🎉 =================================================================="
+echo "🎉  RESTAURANT PLATFORM IS LIVE & RUNNING!"
+echo "🎉 =================================================================="
+echo "👉 Customer Storefront:      http://localhost:5173/"
+echo "👉 Unified Login Portal:     http://localhost:5173/ (1-Click Demo Login)"
+echo "👉 Backend REST API:         http://localhost:5000/api/health"
+echo "👉 Multi-Tenant API V1:      http://localhost:5000/api/v1/tenants"
+echo "=================================================================="
+echo "Available Demo Roles:"
+echo "👑 Super Admin:   superadmin@platform.com  | SuperAdmin@123"
+echo "🍕 Cheezious:     admin@cheezious.com      | Admin@123"
+echo "🍗 Savour Foods:  admin@savour.com         | Admin@123"
+echo "=================================================================="
 echo "Press Ctrl+C to stop all servers."
 
 trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null || true; exit" SIGINT SIGTERM

@@ -2,13 +2,18 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { api, socket } from './api';
 import { Product, Category, Branch, CartItem, Order } from './types';
 import { AuthUser } from './LoginPage';
+import { useTenant } from './theme/ThemeProvider';
+import { CustomizationModal } from './components/CustomizationModal';
+import { AdminDashboard } from './admin/AdminDashboard';
 
 interface AppProps {
-  authUser: AuthUser;
-  onLogout: () => void;
+  authUser?: AuthUser | null;
+  onLogout?: () => void;
+  onOpenLogin?: () => void;
 }
 
-export const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
+export const App: React.FC<AppProps> = ({ authUser, onLogout, onOpenLogin }) => {
+  const { tenant, branding, settings, currentSlug } = useTenant();
   // Navigation: 'menu' | 'deals' | 'branches' | 'track' | 'account' | 'admin'
   const [currentPage, setCurrentPage] = useState<'menu' | 'deals' | 'branches' | 'track' | 'account' | 'admin'>('menu');
 
@@ -167,6 +172,11 @@ export const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
       console.error('Failed to load data:', err);
     }
   };
+
+  useEffect(() => {
+    loadInitialData();
+    setActiveCategory('all');
+  }, [currentSlug]);
 
   const loadUserOrders = async () => {
     try {
@@ -370,7 +380,12 @@ export const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
             </button>
 
             <div className="chz-logo-link" onClick={() => setCurrentPage('menu')} style={{ cursor: 'pointer' }}>
-              <img className="chz-logo-img" src="/assets/mainLogo.png" alt="Cheezious" />
+              <img
+                className="chz-logo-img"
+                src={branding?.logo || '/assets/mainLogo.png'}
+                alt={tenant?.name || 'Restaurant'}
+                style={{ maxHeight: '42px', maxWidth: '150px', objectFit: 'contain' }}
+              />
             </div>
           </div>
 
@@ -394,12 +409,12 @@ export const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
               </button>
             </div>
 
-            {/* Find in cheezious Search Bar */}
+            {/* Find in restaurant Search Bar */}
             <div className="search-capsule">
               <img src="/assets/search.1d0c08c7.svg" alt="" className="search-icon" style={{ width: '16px', height: '16px' }} />
               <input
                 type="text"
-                placeholder="Find in cheezious"
+                placeholder={`Find in ${tenant?.name || 'menu'}...`}
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -428,13 +443,16 @@ export const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
             </button>
 
             {/* LOGIN Button */}
-            {user ? (
+            {authUser || user ? (
               <button className="chz-yellow-btn" onClick={() => setCurrentPage('account')}>
                 <img src="/assets/user.5fb6c6b7.svg" alt="" style={{ width: '16px', height: '16px' }} />
-                <span>{user.name.split(' ')[0].toUpperCase()}</span>
+                <span>{(authUser?.name || user?.name || 'User').split(' ')[0].toUpperCase()}</span>
               </button>
             ) : (
-              <button className="chz-yellow-btn" onClick={() => setIsLoginModalOpen(true)}>
+              <button
+                className="chz-yellow-btn"
+                onClick={() => (onOpenLogin ? onOpenLogin() : setIsLoginModalOpen(true))}
+              >
                 <img src="/assets/user.5fb6c6b7.svg" alt="" style={{ width: '16px', height: '16px' }} />
                 <span>LOGIN</span>
               </button>
@@ -1034,7 +1052,16 @@ export const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
       )}
 
       {/* 3. Product Customizer Modal */}
-      {selectedProduct && (
+      {selectedProduct && selectedProduct.optionGroups && selectedProduct.optionGroups.length > 0 ? (
+        <CustomizationModal
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          onAddToCart={(item) => {
+            setCart((prev) => [...prev, item]);
+            showToast(`Added "${item.name}" to cart!`);
+          }}
+        />
+      ) : selectedProduct && (
         <div className="modal-overlay open" onClick={() => setSelectedProduct(null)}>
           <div className="product-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header-img">

@@ -6,14 +6,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  --chz-yellow: #FEDC00;
-  --chz-yellow-hover: #F0CE00;
-  --chz-red: #E32726;
-  --chz-red-hover: #C81E1D;
-  --chz-dark: #1A1A1A;
-  --chz-grey-bg: #F5F5F5;
-  --chz-border: #E0E0E0;
-  --chz-text-muted: #757575;
+  /* Dynamic White-Label Tenant Tokens */
+  --color-primary: #E32726;
+  --color-secondary: #FEDC00;
+  --color-accent: #1A1A1A;
+  --color-surface: #F8F9FA;
+  --color-text: #1A1A1A;
+  --color-muted: #757575;
+  --radius-btn: 8px;
+  --radius-card: 14px;
+
+  /* Backward Compatible Semantic Tokens */
+  --chz-yellow: var(--color-secondary);
+  --chz-yellow-hover: var(--color-secondary);
+  --chz-red: var(--color-primary);
+  --chz-red-hover: var(--color-primary);
+  --chz-dark: var(--color-text);
+  --chz-grey-bg: var(--color-surface);
+  --chz-border: #E2E8F0;
+  --chz-text-muted: var(--color-muted);
 
   --header-height: 70px;
   --max-width: 1440px;

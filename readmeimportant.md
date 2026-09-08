@@ -1,332 +1,278 @@
-# 🍕 CHEEZIOUS 110% DYNAMIC FULL-STACK PERN PLATFORM
+# 🚀 WHITE-LABEL MULTI-TENANT RESTAURANT SAAS PLATFORM
 
-> **Platform:** Full-Stack Enterprise Food Delivery Platform  
-> **Reference Website:** [https://cheezious.com/](https://cheezious.com/)  
-> **Brand Slogan:** *"The Cheeziest Food in Town"*  
+> **Specification:** [PRD.md](file:///home/a4asimkhalid/Desktop/chezzious%20website%20layout%20/PRD.md) (Master PRD v1.0.0)  
+> **Architecture Core:** *One Platform. One Codebase. Dynamic Branding. Strict Tenant Isolation. Server-Authoritative Pricing. Real-Time Operations.*  
 > **Tech Stack:** **PostgreSQL + Express.js + React.js + Node.js + TypeScript + WebSockets (Socket.io)**  
-> **Version:** 3.0.0 (No-Docker Local Setup)  
+> **Version:** 4.0.0 (Master White-Label Multi-Tenant Release — No Docker Required)
 
 ---
 
 ## 📑 TABLE OF CONTENTS
-1. [System Overview & Architecture](#1-system-overview--architecture)
-2. [A-to-Z Dynamic Features](#2-a-to-z-dynamic-features)
-3. [Live Admin & Kitchen Portal](#3-live-admin--kitchen-portal)
-4. [Real-time WebSockets Engine](#4-real-time-websockets-engine)
-5. [PostgreSQL Database & Prisma Schema](#5-postgresql-database--prisma-schema)
-6. [API Endpoints Reference](#6-api-endpoints-reference)
-7. [Project Directory & File Structure](#7-project-directory--file-structure)
-8. [How to Launch Locally (No Docker)](#8-how-to-launch-locally-no-docker)
-9. [Testing the Live Flow Step-by-Step](#9-testing-the-live-flow-step-by-step)
-10. [Sidebar — Cheezious Exact Style](#10-sidebar--cheezious-exact-style)
-11. [Changelog](#11-changelog)
+1. [Platform Vision & Core Principles](#1-platform-vision--core-principles)
+2. [Multi-Tenant Architecture](#2-multi-tenant-architecture)
+3. [Dynamic Branding & Theming Engine](#3-dynamic-branding--theming-engine)
+4. [Authoritative Server-Side Pricing Engine](#4-authoritative-server-side-pricing-engine)
+5. [7 Role-Based Portals & Default Credentials](#5-7-role-based-portals--default-credentials)
+6. [Real-time Socket.io Room Architecture](#6-real-time-socketio-room-architecture)
+7. [PostgreSQL Multi-Tenant Database Schema](#7-postgresql-multi-tenant-database-schema)
+8. [API Endpoints Reference (V1)](#8-api-endpoints-reference-v1)
+9. [How to Launch Locally (No Docker)](#9-how-to-launch-locally-no-docker)
+10. [End-to-End Verification Walkthrough](#10-end-to-end-verification-walkthrough)
+11. [Git Changelog](#11-changelog)
 
 ---
 
-## 1. SYSTEM OVERVIEW & ARCHITECTURE
+## 1. PLATFORM VISION & CORE PRINCIPLES
 
-This platform is a **110% dynamic, production-grade Full-Stack PERN system** modeled after Cheezious Pakistan. Unlike static clones, this system includes:
-- **A Real Database:** PostgreSQL 16 with Prisma ORM.
-- **A Real Backend:** Node.js + Express + TypeScript with bi-directional WebSockets (`Socket.io`).
-- **A Dynamic Customer Storefront:** React + TypeScript + Vite with dynamic category/product loading, customization, cart, vouchers, and live order tracking.
-- **A Live Kitchen & Admin Portal:** Real-time incoming order sound/beeps, status progression (`PENDING` ➔ `PREPARING` ➔ `ON_THE_WAY` ➔ `DELIVERED`), dynamic product addition, price editing, and sales analytics.
+This platform is a **configuration-driven SaaS platform**, not a single-brand clone. Cheezious is simply Tenant #1. Another tenant (such as **Savour Foods**) is Tenant #2.
 
 ```
-              ┌───────────────────────────────────────────────┐
-              │             PostgreSQL Database               │
-              │   Users, Products, Categories, Orders, etc.   │
-              └───────────────────────▲───────────────────────┘
-                                      │ (Prisma ORM)
-              ┌───────────────────────┴───────────────────────┐
-              │      Node.js Express + TypeScript Server      │
-              │  - /api/products (110% Dynamic CRUD)          │
-              │  - /api/orders (Create, Status Updates)       │
-              │  - /api/categories, /api/branches             │
-              │  - Socket.io Server (Real-Time Bidirectional) │
-              └──────────────▲─────────────────▲──────────────┘
-                             │                 │
-             (REST + WebSockets)            (REST + WebSockets)
-                             │                 │
- ┌─────────────────────────────┐         ┌────────────────────────────┐
- │     Customer Storefront     │         │    Admin & Kitchen Portal  │
- │     (React + TypeScript)    │         │     (React + TypeScript)   │
- │ - Dynamic Menu & Search     │         │ - Live Orders Feed & Sound │
- │ - Customization Modal       │         │ - Order Status Changer     │
- │ - Persistent Cart & Vouchers│         │ - Dynamic Add Product      │
- │ - Real-Time Order Tracker   │         │ - Analytics (Revenue)      │
- └─────────────────────────────┘         └────────────────────────────┘
+                    PLATFORM (Super Admin)
+                              │
+                    TENANTS (Cheezious, Savour Foods, ...)
+                              │
+          ┌───────────────────┼───────────────────┐
+          ↓                   ↓                   ↓
+       BRANDING            SETTINGS          BUSINESS DATA
+    (Colors, Fonts,     (Currency, Tax,     (Products, Branches,
+     Logos, Radii)       Delivery Rules)      Orders, Customers)
+          │                   │                   │
+          └───────────────────┼───────────────────┘
+                              │
+                 ┌────────────┴────────────┐
+                 ↓                         ↓
+          REAL-TIME ENGINE          REST API ENGINE
+       (Socket.io Isolated       (Strict Tenant Isolation
+         Tenant & Branch          & Server-Authoritative
+             Rooms)                      Pricing)
+                 │                         │
+     ┌───────────┼───────────┬─────────────┼───────────┐
+     ↓           ↓           ↓             ↓           ↓
+  Customer     Kitchen     Rider        Tenant       Super
+ Storefront      KDS     Dashboard       Admin       Admin
+ (Dynamic      (Audio      (GPS         (Branding,  (Tenant
+  Theming)     Alerts)    Sim & Flow)    Menu, Ops)  Onboard)
 ```
 
----
-
-## 2. A-TO-Z DYNAMIC FEATURES
-
-| Feature | Description |
-|---|---|
-| **110% Dynamic Catalog** | Products, prices, descriptions, images, and stock availability are pulled directly from PostgreSQL. If an admin edits a price or adds a new pizza, all customer screens update immediately. |
-| **Authentic Menu Pre-loaded** | The database is seeded with **127 authentic Cheezious products**, **36 categories**, and **61 nationwide branches** with high-resolution photography. |
-| **Product Customizer** | Interactive modal for selecting sizes (Small, Regular, Large, Jumbo), crusts (Pan, Thin, Cheesy Stuffed, Crown Crust), flavors, beverages, and extra toppings with live price calculation. |
-| **Persistent Shopping Cart** | Cart items and selections are saved in `localStorage`, surviving browser refreshes. |
-| **Voucher Promo Engine** | Real backend validation for promo codes (`CHEEZY10` for 10% off, `WELCOME50` for Rs. 50 off, `SUPERCHEESE` for 15% off). |
-| **Delivery vs Takeaway** | Dynamic fee calculator: Free delivery above Rs. 2,000 or for takeaway; Rs. 100 on smaller deliveries. |
-| **Real-time Live Tracker** | Customer screen connects to WebSockets room. When the kitchen chef clicks "Start Baking", the customer's stepper moves to step 2 instantly with zero page reload. |
+### Key Rules Enforced:
+- **Rule 1 — No Hardcoded Brands:** The codebase contains zero brand assumptions. Colors, slogans, logos, and menus are loaded dynamically.
+- **Rule 4 & 6 — Strict Tenant Isolation:** Every database model includes `tenantId`. Non-super-admin users cannot access data across tenants.
+- **Rule 5 — Server-Side Pricing Only:** Clients send item IDs and option IDs. The server authoritatively calculates unit prices, discounts, delivery fees, and grand totals.
 
 ---
 
-## 3. LIVE ADMIN & KITCHEN PORTAL
+## 2. MULTI-TENANT ARCHITECTURE
 
-Click the **"⚡ Admin Portal"** link in the sidebar to switch to the Kitchen & Admin Dashboard:
-1. **Live Orders Queue (Kitchen Display System):**
-   - Displays all active incoming customer orders in real time.
-   - Emits an **audio beep notification** when a new order arrives.
-   - Action buttons:
-     - `👨‍🍳 Accept & Start Baking` (moves status to `PREPARING`)
-     - `🛵 Rider Dispatched` (moves status to `ON_THE_WAY`)
-     - `✓ Mark Delivered` (moves status to `DELIVERED`)
-2. **Product Catalog Manager (CRUD):**
-   - **"+ Add New Product" button**: Modal allowing admins to dynamically add any new pizza/burger/deal with Title, Category, Base Price, Image URL, and Description directly into PostgreSQL.
-   - **In Stock / Out of Stock toggle**: Immediately takes items off the menu if ingredients run out.
-   - **Delete Product button**: Removes discontinued products.
-3. **Live Business Analytics:**
-   - Today's Total Revenue in PKR.
-   - Total Orders placed, active in kitchen, and delivered.
+The platform comes pre-seeded with two full production-grade restaurant brands:
+
+| Feature | 🍕 Cheezious (Tenant 1) | 🍗 Savour Foods (Tenant 2) |
+|---|---|---|
+| **Slug** | `cheezious` | `savour-foods` |
+| **Primary Color** | `#D80032` (Crimson Red) | `#0B6E4F` (Emerald Forest Green) |
+| **Secondary Color** | `#FFE600` (Cheezy Gold) | `#D4AF37` (Royal Gold) |
+| **Catalog** | 36 Categories, 129 Authentic Products | Traditional Pulao, Roasts, Zarda Kheer |
+| **Customizer Engine** | Pizza Sizes, Crusts, Toppings | Portion Sizes (Single/Double), Piece Types, Kababs |
+| **Branches** | 61 Nationwide Branches | Blue Area, Gordon College Rd, Peshawar Rd |
+| **Vouchers** | `CHEEZY10`, `WELCOME50`, `SUPERCHEESE` | `SAVOUR10` |
 
 ---
 
-## 4. REAL-TIME WEBSOCKETS ENGINE
+## 3. DYNAMIC BRANDING & THEMING ENGINE
 
-The backend uses **Socket.io** on top of the HTTP server. Key real-time events:
+The frontend uses **`ThemeProvider.tsx`** to dynamically inject CSS custom properties to `:root`:
 
-| Event Name | Direction | Payload | Purpose |
-|---|---|---|---|
-| `join:order` | Client ➔ Server | `orderId` | Customer joins private order tracking room |
-| `join:kitchen` | Admin ➔ Server | `kitchen_room` | Admin/Kitchen staff joins live orders channel |
-| `order:new` | Server ➔ Admin | `Order` object | Broadcasts new incoming customer order to kitchen |
-| `order:status_updated` | Server ➔ Both | `Order` object | Updates status in real time on both customer stepper & admin list |
-| `product:added` | Server ➔ All | `Product` object | Notifies all customer storefronts of newly added menu item |
-| `product:updated` | Server ➔ All | `Product` object | Syncs price and stock changes |
-| `product:deleted` | Server ➔ All | `productId` | Removes deleted item from customer screen |
+```css
+:root {
+  --color-primary: [tenant.branding.primaryColor];
+  --color-secondary: [tenant.branding.secondaryColor];
+  --color-accent: [tenant.branding.accentColor];
+  --color-surface: [tenant.branding.surfaceColor];
+  --color-text: [tenant.branding.textColor];
+  --radius-btn: [tenant.branding.buttonRadius];
+  --radius-card: [tenant.branding.cardRadius];
+}
+```
+
+### 1-Click Brand Switcher:
+At the top of the screen in development/demo mode, click **🍕 Cheezious** or **🍗 Savour Foods** to watch the entire UI instantaneously rebrand its colors, logos, categories, products, and branches with zero reload.
 
 ---
 
-## 5. POSTGRESQL DATABASE & PRISMA SCHEMA
+## 4. AUTHORITATIVE SERVER-SIDE PRICING ENGINE
+
+Located at `server/src/services/pricing.ts`:
+1. Client sends:
+   ```json
+   {
+     "items": [
+       { "productId": "prod_1", "quantity": 2, "optionIds": ["opt_size_large", "opt_crust_cheese"] }
+     ],
+     "branchId": "branch_1",
+     "orderMode": "DELIVERY",
+     "voucherCode": "CHEEZY10"
+   }
+   ```
+2. The server queries PostgreSQL for base price and option modifiers.
+3. Server authoritatively computes subtotal, verifies voucher rules and minimum order thresholds, applies branch-specific delivery fee, and computes total.
+4. Client-sent totals are strictly ignored to prevent tampering.
+
+---
+
+## 5. 7 ROLE-BASED PORTALS & DEFAULT CREDENTIALS
+
+All roles log in from a single unified login page (`LoginPage.tsx`) with 1-click demo buttons:
+
+| Role | Email | Password | Tenant | Portal View |
+|---|---|---|---|---|
+| **👑 Super Admin** | `superadmin@platform.com` | `SuperAdmin@123` | Platform | Super Admin Dashboard (1-Click Onboarder) |
+| **⚡ Cheezious Admin** | `admin@cheezious.com` | `Admin@123` | Cheezious | Visual Branding, Menu Builder, Orders |
+| **👨‍🍳 Cheezious Kitchen** | `kitchen@cheezious.com` | `Kitchen@123` | Cheezious | Kitchen Display System with Audio Alert |
+| **🛵 Cheezious Rider** | `rider@cheezious.com` | `Rider@123` | Cheezious | Rider Portal with Live GPS Broadcaster |
+| **🛒 Cheezious Customer** | `customer@cheezious.com` | `Customer@123` | Cheezious | Cheezious Red/Yellow Customer Storefront |
+| **⚡ Savour Admin** | `admin@savour.com` | `Admin@123` | Savour Foods | Savour Branding, Pulao Menu Builder |
+| **👨‍🍳 Savour Kitchen** | `kitchen@savour.com` | `Kitchen@123` | Savour Foods | Savour Kitchen Queue with Beeps |
+| **🛵 Savour Rider** | `rider@savour.com` | `Rider@123` | Savour Foods | Savour Delivery Dashboard |
+| **🛒 Savour Customer** | `customer@savour.com` | `Customer@123` | Savour Foods | Savour Green/Gold Customer Storefront |
+
+---
+
+## 6. REAL-TIME SOCKET.IO ROOM ARCHITECTURE
+
+Located at `server/src/socket.ts`:
+
+| Room | Purpose | Real-Time Events |
+|---|---|---|
+| `tenant:{tenantId}` | Brand-isolated broadcasts | `product:added`, `product:updated`, `delivery:assigned` |
+| `branch:{branchId}` | Branch specific updates | `branch:status_updated` |
+| `kitchen:{branchId}` | KDS active tickets | `order:new`, `order:status_updated` |
+| `order:{orderId}` | Customer live order tracker | `order:status_updated`, `delivery:location_updated` |
+| `delivery:{deliveryId}` | Rider live GPS coordinates | `delivery:location_updated`, `delivery:status_updated` |
+| `rider:{riderId}` | Rider private dispatch channel | `delivery:assigned` |
+
+---
+
+## 7. POSTGRESQL MULTI-TENANT DATABASE SCHEMA
 
 Located at `server/prisma/schema.prisma`:
-- **`Product`**: `id`, `name`, `description`, `price`, `discountedPrice`, `image`, `isBestSeller`, `isDeal`, `inStock`, `categoryId`, `createdAt`.
-- **`Category`**: `id`, `name`, `image`, `slug`, `products`.
-- **`Branch`**: `id`, `name`, `city`, `address`, `phone`, `isOpen`, `timing`.
-- **`Order`**: `id`, `orderNumber` (`#CHZ-XXXX`), `customerName`, `customerPhone`, `deliveryAddress`, `landmark`, `notes`, `orderMode`, `paymentMethod`, `status`, `subtotal`, `deliveryFee`, `discount`, `total`, `items`.
-- **`OrderItem`**: `id`, `orderId`, `productName`, `quantity`, `unitPrice`, `size`, `crust`, `flavor`, `drink`, `addons`, `instructions`.
-- **`Voucher`**: `id`, `code`, `discountType`, `discountValue`, `minOrder`, `active`.
+- **`Tenant`**: `id`, `name`, `slug`, `status`, `currency`, `timezone`, `country`
+- **`TenantBranding`**: `primaryColor`, `secondaryColor`, `accentColor`, `surfaceColor`, `logo`, `buttonRadius`, `cardRadius`
+- **`TenantSettings`**: `minimumOrder`, `deliveryFee`, `freeDeliveryThreshold`, `hotline`, `whatsapp`, `deliveryEnabled`
+- **`User`**: `id`, `tenantId`, `name`, `email`, `password`, `role` (7 roles), `phone`, `isActive`
+- **`RefreshToken`**: `id`, `userId`, `token`, `expiresAt`, `revokedAt`
+- **`Category`**: `id`, `tenantId`, `name`, `slug`, `image`, `sortOrder`, `isActive`
+- **`Product`**: `id`, `tenantId`, `categoryId`, `name`, `slug`, `basePrice`, `discountedPrice`, `image`, `isAvailable`
+- **`ProductOptionGroup`**: `id`, `tenantId`, `productId`, `name`, `minSelect`, `maxSelect`, `isRequired`
+- **`ProductOption`**: `id`, `groupId`, `name`, `priceModifier`
+- **`Branch`**: `id`, `tenantId`, `name`, `city`, `address`, `phone`, `isOpen`, `deliveryFee`, `minimumOrder`
+- **`Order`**: `id`, `tenantId`, `branchId`, `orderNumber`, `orderMode`, `paymentMethod`, `status`, `subtotal`, `deliveryFee`, `discount`, `total`
+- **`OrderItem`**: `id`, `orderId`, `productId`, `productName`, `quantity`, `unitPrice`, `totalPrice`, `optionsJson`
+- **`OrderStatusHistory`**: `id`, `orderId`, `oldStatus`, `newStatus`, `changedBy`, `timestamp`
+- **`Rider`**: `id`, `tenantId`, `userId`, `vehicleType`, `vehicleNumber`, `status`, `isAvailable`
+- **`Delivery`**: `id`, `tenantId`, `orderId`, `riderId`, `status`, `assignedAt`, `pickedUpAt`, `deliveredAt`
+- **`RiderLocation`**: `id`, `riderId`, `latitude`, `longitude`, `heading`, `speed`, `timestamp`
+- **`Voucher`**: `id`, `tenantId`, `code`, `discountType`, `discountValue`, `minimumOrder`, `maximumDiscount`
+- **`Banner`**: `id`, `tenantId`, `title`, `desktopImage`, `buttonText`, `buttonUrl`
 
 ---
 
-## 6. API ENDPOINTS REFERENCE
+## 8. API ENDPOINTS REFERENCE (V1)
 
-Base URL: `http://localhost:5000`
+Base URL: `http://localhost:5000/api/v1`
 
-### Products & Categories
-- `GET /api/products?search=bazinga&categoryId=...` - Get all products (with filters)
-- `POST /api/products` - Create new product (Admin)
-- `PUT /api/products/:id` - Edit product price/stock (Admin)
-- `DELETE /api/products/:id` - Delete product (Admin)
-- `GET /api/categories` - Get all categories with product counts
-- `POST /api/categories` - Create new category
+### Tenants & Super Admin
+- `GET /tenants` - List active tenants (public for brand switcher)
+- `GET /tenants/:slug/public` - Storefront initialization data
+- `POST /tenants` - 1-Click Onboarding Wizard (Super Admin)
+- `PUT /tenants/:id/branding` - Visual Branding Editor (Admin)
+- `PUT /tenants/:id/settings` - Business Settings & Feature Flags (Admin)
+- `GET /analytics/superadmin` - Platform-wide cross-tenant stats
 
-### Branches
-- `GET /api/branches?city=Islamabad` - Get branches by city
-- `PATCH /api/branches/:id/toggle` - Toggle branch open/closed
+### Authentication
+- `POST /auth/register` - Customer signup within active tenant
+- `POST /auth/login` - Unified login for all 7 roles across all brands
+- `GET /auth/me` - Profile & permissions of authenticated user
+
+### Catalog & Options
+- `GET /categories` - Categories for active tenant
+- `GET /products` - Products for active tenant (filtered by search, category, stock)
+- `GET /products/:id` - Product with option groups (Sizes, Crusts, Portions)
+- `POST /products/:id/options` - Add option customizer group (Admin)
+- `PUT /products/:id` - Update price/stock (Admin)
 
 ### Orders & Tracking
-- `POST /api/orders` - Place new order (Emits WebSocket `order:new`)
-- `GET /api/orders?status=PREPARING` - Get orders for kitchen feed
-- `GET /api/orders/:id` - Get order details by ID or `#CHZ-XXXX`
-- `PATCH /api/orders/:id/status` - Update status (Emits WebSocket `order:status_updated`)
+- `POST /orders` - Authoritative order placement (calculates total server-side)
+- `GET /orders` - Tenant orders feed (filtered by status/branch)
+- `GET /orders/:id` - Order details with status history snapshot
+- `PATCH /orders/:id/status` - Advance order workflow status (`PENDING` ➔ `PREPARING` ➔ `READY` ➔ `DELIVERED`)
 
-### Vouchers & Analytics
-- `POST /api/vouchers/verify` - Check promo code validity & discount
-- `GET /api/analytics/stats` - Live business metrics (Revenue, orders count)
-
----
-
-## 7. PROJECT DIRECTORY & FILE STRUCTURE
-
-```
-chezzious website layout/
-│
-├── readmeimportant.md          # This documentation file
-│
-├── server/                     # Node.js + Express + TypeScript + Prisma Backend
-│   ├── .env                    # PostgreSQL connection string & PORT
-│   ├── package.json            # Server dependencies (Express, Socket.io, Prisma, tsx)
-│   ├── tsconfig.json           # Backend TypeScript configuration
-│   ├── prisma/
-│   │   ├── schema.prisma       # Relational database models
-│   │   └── seed.ts             # Auto-seed script with 127 products & 61 branches
-│   └── src/
-│       └── index.ts            # Express REST API & Socket.io WebSockets server
-│
-├── client/                     # React 18 + TypeScript + Vite Frontend
-│   ├── package.json            # Frontend dependencies (React, Socket.io-client, Vite)
-│   ├── vite.config.ts          # Vite configuration on port 5173
-│   ├── tsconfig.json           # Frontend TypeScript configuration
-│   ├── index.html              # HTML entrypoint
-│   └── src/
-│       ├── types.ts            # TypeScript interfaces (Product, Order, CartItem, Branch)
-│       ├── api.ts              # API service & Socket.io client connector
-│       ├── styles.css          # Full Cheezious design system & responsive styling
-│       ├── main.tsx            # React DOM mounting
-│       ├── App.tsx             # Customer Storefront with live order tracker
-│       └── admin/
-│           └── AdminDashboard.tsx # Kitchen Display System, Live Orders & Product CRUD
-│
-├── data/                       # Scraped catalog assets (catalog.json, categories, products)
-└── assets/                     # Official Cheezious vector SVG logo
-```
+### Riders & Deliveries
+- `GET /deliveries/riders` - List active riders (Admin)
+- `POST /deliveries/assign` - Assign rider to order
+- `GET /deliveries/assigned` - Rider's active deliveries
+- `PATCH /deliveries/:id/status` - Rider marks `PICKED_UP`, `ON_THE_WAY`, `DELIVERED`
+- `POST /deliveries/:id/location` - Stream live rider GPS coordinates to customer map
 
 ---
 
-## 8. HOW TO LAUNCH LOCALLY (NO DOCKER)
+## 9. HOW TO LAUNCH LOCALLY (NO DOCKER)
 
-### Requirements
-- **Node.js** v18+ → [https://nodejs.org](https://nodejs.org)
-- **PostgreSQL** v14+ → [https://www.postgresql.org/download](https://www.postgresql.org/download)
-
----
-
-### Step 1 — Install & Start PostgreSQL
-
-**On Ubuntu/Debian Linux:**
-```bash
-sudo apt update
-sudo apt install postgresql postgresql-contrib -y
-sudo systemctl start postgresql
-sudo systemctl enable postgresql
-```
-
-**On Windows:**  
-Download & install from [postgresql.org](https://www.postgresql.org/download/windows/), then start the service.
-
-**On macOS:**
-```bash
-brew install postgresql@16
-brew services start postgresql@16
-```
+### Requirements:
+- **Node.js** v18+ (tested on Node v24.14.0)
+- **PostgreSQL** installed and running on `localhost:5432`
 
 ---
 
-### Step 2 — Create the Database
-
-```bash
-sudo -u postgres psql
-```
-Then inside psql:
-```sql
-CREATE DATABASE cheezious_db;
-CREATE USER cheezious_user WITH PASSWORD 'cheezious123';
-GRANT ALL PRIVILEGES ON DATABASE cheezious_db TO cheezious_user;
-\q
-```
-
----
-
-### Step 3 — Configure Backend Environment
-
-Edit `server/.env` (create if not exists):
+### Step 1 — Setup Database
+Ensure PostgreSQL is running locally, then in `server/.env`:
 ```env
-DATABASE_URL="postgresql://cheezious_user:cheezious123@localhost:5432/cheezious_db"
+DATABASE_URL="postgresql://<username>:<password>@localhost:5432/cheezious_db?schema=public"
 PORT=5000
-JWT_SECRET=cheezious_super_secret_key
 ```
 
----
-
-### Step 4 — Start the Backend
-
+Run schema generation and seed:
 ```bash
 cd server
 npm install
-npx prisma db push
-npx tsx prisma/seed.ts
-npm run dev
+npm run db:generate
+npm run db:push
+npm run db:seed
 ```
-
-Backend will start at: **`http://localhost:5000`** ✅
 
 ---
 
-### Step 5 — Start the Frontend (New Terminal)
-
+### Step 2 — Start Backend & Frontend
+Using `start.sh`:
 ```bash
+./start.sh
+```
+
+Or manually:
+```bash
+# Terminal 1 (Backend)
+cd server
+npm run dev
+
+# Terminal 2 (Frontend)
 cd client
-npm install
 npm run dev
 ```
 
-Frontend will start at: **`http://localhost:5173`** ✅
-
 ---
 
-### Step 6 — Open in Browser
+## 10. END-TO-END VERIFICATION WALKTHROUGH
 
-```
-http://localhost:5173
-```
-
----
-
-## 9. TESTING THE LIVE FLOW STEP-BY-STEP
-
-1. Open **`http://localhost:5173/`** in your browser.
-2. Add a Pizza (e.g. *Crown Crust Pizza*) to your cart, customize crust and toppings.
-3. Open the Cart Drawer, type coupon code **`CHEEZY10`** and click **Apply** (10% discount applied).
-4. Click **Proceed to Checkout**, enter your name and phone, and click **Confirm & Place Order**.
-5. You will see the **Live Order Tracker** screen showing `Order Placed`.
-6. Click the **☰ hamburger menu** → **Admin Portal**:
-   - You will see the new order in the kitchen feed with an alert banner!
-7. Click **`👨‍🍳 Accept & Start Baking`**:
-   - Return to the customer tab: the customer's stepper **automatically moved to "Kitchen Preparing" via WebSockets**!
-8. Click **`🛵 Rider Dispatched`** then **`✓ Mark Delivered`**:
-   - Watch the customer's screen celebrate with the completed delivery status!
-
-### Test Voucher Codes
-| Code | Discount |
-|---|---|
-| `CHEEZY10` | 10% off |
-| `WELCOME50` | Rs. 50 off |
-| `SUPERCHEESE` | 15% off |
-
----
-
-## 10. SIDEBAR — CHEEZIOUS EXACT STYLE
-
-The left slide-out drawer (opened via the red ☰ hamburger button) matches the **official Cheezious.com sidebar**:
-
-| Element | Description |
-|---|---|
-| **Yellow Avatar** | Circular yellow badge with person SVG icon |
-| **Login to explore** | Sub-label when user is not logged in |
-| **World of flavors** | Bold brand tagline |
-| **LOGIN / LOGOUT button** | Bordered button; shows LOGOUT when user is authenticated |
-| **Explore Menu** | Grid SVG icon + link to menu page |
-| **Branch Locator** | House SVG icon + link to branches page |
-| **Blog / Privacy Policy** | Plain text footer links |
-| **Admin Portal** | Settings icon + link (blue accent color) |
-| **Cheezious Hotline bar** | Yellow sticky footer with logo, text, and circular phone call button |
+1. **Open Storefront:** Navigate to `http://localhost:5173/`.
+2. **Switch Brands:** At the top banner, click **🍗 Savour Foods**. Notice the entire UI changes to Emerald Green & Royal Gold, displaying Traditional Pulao & Chicken Roasts.
+3. **Switch Back:** Click **🍕 Cheezious**. The UI returns to Red & Yellow with Pizzas and Burgers.
+4. **Try Customizer:** Click any Pizza or Pulao. The generic `<CustomizationModal>` opens allowing size and option selections with live price calculation.
+5. **Place Order:** Add item to cart and proceed to Checkout. Order is placed with authoritative server-side pricing.
+6. **Live Kitchen:** In a new window, log in as `kitchen@cheezious.com` (`Kitchen@123`). The kitchen display sounds an audio alert and displays the new ticket!
+7. **Rider Dispatch:** Accept order, move to Ready. In Rider Dashboard (`rider@cheezious.com`), accept delivery and click "Broadcast Live GPS" to stream coordinates to the customer map.
 
 ---
 
 ## 11. CHANGELOG
-
-| Date | Version | Change |
-|---|---|---|
-| 2026-09-09 | 3.0.0 | Removed Docker — local PostgreSQL + Node.js setup only |
-| 2026-09-09 | 2.3.0 | Exact Cheezious sidebar: avatar, login, SVG nav icons, hotline bar |
-| 2026-09-09 | 2.2.0 | Fixed Prisma OpenSSL detection (binaryTargets + libssl-dev) |
-| 2026-09-09 | 2.1.0 | Docker Portainer GitHub deployment (GitOps auto-redeploy) |
-| 2026-09-08 | 2.0.0 | Full PERN stack + Docker + 100% Cheezious UI parity |
-| 2026-09-08 | 1.0.0 | Initial full-stack PERN implementation |
-
----
-
-*Crafted with 100% production rigor, enterprise TypeScript architecture, and extra cheese!* 🍕🧀🔥
+- **v4.0.0 (Current):** Master White-Label Multi-Tenant SaaS platform transformation per PRD v1.0.0. Added dynamic branding engine, tenant isolation, option customizer, KDS display, live GPS broadcaster, Super Admin onboarding wizard, and pre-seeded Cheezious & Savour Foods.
+- **v3.0.0:** Single login page for all 4 roles, removal of Docker containers.
+- **v2.0.0:** Real-time WebSockets synchronization.
+- **v1.0.0:** Initial Cheezious catalog scraper and layout.

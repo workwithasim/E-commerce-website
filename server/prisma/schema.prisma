@@ -8,85 +8,380 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum TenantStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
 enum UserRole {
-  CUSTOMER
+  SUPER_ADMIN
+  TENANT_ADMIN
+  BRANCH_MANAGER
+  KITCHEN_MANAGER
+  KITCHEN_STAFF
   RIDER
-  ADMIN
-  KITCHEN
+  CUSTOMER
+}
+
+enum OrderMode {
+  DELIVERY
+  TAKEAWAY
+  DINE_IN
+}
+
+enum PaymentMethod {
+  COD
+  CARD
+  ONLINE
+  WALLET
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  RIDER_ASSIGNED
+  PICKED_UP
+  ON_THE_WAY
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum RiderStatus {
+  OFFLINE
+  AVAILABLE
+  BUSY
+  ON_DELIVERY
+}
+
+enum DeliveryStatus {
+  PENDING
+  ASSIGNED
+  ACCEPTED
+  PICKED_UP
+  ON_THE_WAY
+  DELIVERED
+  CANCELLED
+}
+
+enum DiscountType {
+  PERCENT
+  FIXED
+  FREE_DELIVERY
+}
+
+model Tenant {
+  id           String               @id @default(cuid())
+  name         String
+  slug         String               @unique
+  status       TenantStatus         @default(ACTIVE)
+  timezone     String               @default("Asia/Karachi")
+  currency     String               @default("PKR")
+  country      String               @default("Pakistan")
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  branding     TenantBranding?
+  settings     TenantSettings?
+  domains      TenantDomain[]
+  users        User[]
+  branches     Branch[]
+  categories   Category[]
+  products     Product[]
+  optionGroups ProductOptionGroup[]
+  orders       Order[]
+  riders       Rider[]
+  deliveries   Delivery[]
+  vouchers     Voucher[]
+  banners      Banner[]
+  auditLogs    AuditLog[]
+}
+
+model TenantBranding {
+  id              String   @id @default(cuid())
+  tenantId        String   @unique
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  logo            String
+  logoDark        String?
+  mobileLogo      String?
+  favicon         String?
+  appIcon         String?
+
+  primaryColor    String   @default("#D80032")
+  secondaryColor  String   @default("#FFE600")
+  accentColor     String   @default("#1A1A1A")
+  backgroundColor String   @default("#FFFFFF")
+  surfaceColor    String   @default("#F8F9FA")
+  textColor       String   @default("#1A1A1A")
+  mutedTextColor  String   @default("#71717A")
+
+  headingFont     String   @default("Inter, sans-serif")
+  bodyFont        String   @default("Inter, sans-serif")
+
+  buttonRadius    String   @default("8px")
+  cardRadius      String   @default("12px")
+
+  headerStyle     String   @default("default")
+  footerStyle     String   @default("default")
+
+  updatedAt       DateTime @updatedAt
+}
+
+model TenantSettings {
+  id                          String   @id @default(cuid())
+  tenantId                    String   @unique
+  tenant                      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  currency                    String   @default("PKR")
+  currencySymbol              String   @default("Rs.")
+  country                     String   @default("Pakistan")
+  timezone                    String   @default("Asia/Karachi")
+
+  minimumOrder                Float    @default(500)
+  deliveryFee                 Float    @default(100)
+  freeDeliveryThreshold       Float    @default(2000)
+
+  taxEnabled                  Boolean  @default(false)
+  taxRate                     Float    @default(0)
+
+  takeawayEnabled             Boolean  @default(true)
+  deliveryEnabled             Boolean  @default(true)
+  cashOnDeliveryEnabled       Boolean  @default(true)
+  onlinePaymentEnabled        Boolean  @default(false)
+
+  customerRegistrationEnabled Boolean  @default(true)
+  reviewsEnabled              Boolean  @default(false)
+  riderTrackingEnabled        Boolean  @default(true)
+
+  phone                       String?
+  hotline                     String?
+  whatsapp                    String?
+  email                       String?
+  website                     String?
+  supportEmail                String?
+
+  socialFacebook              String?
+  socialInstagram             String?
+  socialYoutube               String?
+  socialTiktok                String?
+  socialX                     String?
+
+  updatedAt                   DateTime @updatedAt
+}
+
+model TenantDomain {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  domain    String   @unique
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  phone     String?
-  role      UserRole @default(CUSTOMER)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String         @id @default(cuid())
+  tenantId      String?
+  tenant        Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name          String
+  email         String         @unique
+  password      String
+  phone         String?
+  role          UserRole       @default(CUSTOMER)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  riderProfile  Rider?
+  branchStaff   BranchStaff[]
+  orders        Order[]
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+
+  @@index([tenantId])
 }
 
-model Category {
+model RefreshToken {
   id        String    @id @default(cuid())
-  name      String
-  image     String?
-  slug      String    @unique
-  products  Product[]
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
   createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-}
 
-model Product {
-  id              String      @id @default(cuid())
-  name            String
-  description     String?
-  price           Float
-  discountedPrice Float?
-  image           String
-  isBestSeller    Boolean     @default(false)
-  isDeal          Boolean     @default(false)
-  inStock         Boolean     @default(true)
-  categoryId      String?
-  category        Category?   @relation(fields: [categoryId], references: [id])
-  orderItems      OrderItem[]
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  @@index([userId])
 }
 
 model Branch {
+  id             String        @id @default(cuid())
+  tenantId       String
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name           String
+  city           String
+  address        String
+  phone          String
+  latitude       Float?
+  longitude      Float?
+  isOpen         Boolean       @default(true)
+  openingHours   String        @default("11:00 AM - 03:00 AM")
+  deliveryRadius Float         @default(10.0)
+  deliveryFee    Float         @default(100.0)
+  minimumOrder   Float         @default(500.0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  orders         Order[]
+  staff          BranchStaff[]
+  riders         Rider[]
+  deliveries     Delivery[]
+  banners        Banner[]
+
+  @@index([tenantId])
+  @@index([city])
+}
+
+model BranchStaff {
   id        String   @id @default(cuid())
-  name      String
-  city      String
-  address   String
-  phone     String
-  isOpen    Boolean  @default(true)
-  timing    String   @default("11:00 AM - 03:00 AM")
-  orders    Order[]
+  branchId  String
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      UserRole
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, userId])
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  description String?
+  image       String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model Product {
+  id              String               @id @default(cuid())
+  tenantId        String
+  tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  categoryId      String?
+  category        Category?            @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  name            String
+  slug            String
+  description     String?
+  basePrice       Float
+  discountedPrice Float?
+  image           String
+  isBestSeller    Boolean              @default(false)
+  isFeatured      Boolean              @default(false)
+  isDeal          Boolean              @default(false)
+  isAvailable     Boolean              @default(true)
+  sortOrder       Int                  @default(0)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  optionGroups    ProductOptionGroup[]
+  orderItems      OrderItem[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([categoryId])
+}
+
+model ProductOptionGroup {
+  id         String          @id @default(cuid())
+  tenantId   String
+  tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name       String
+  minSelect  Int             @default(0)
+  maxSelect  Int             @default(1)
+  isRequired Boolean         @default(false)
+  sortOrder  Int             @default(0)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  options    ProductOption[]
+
+  @@index([tenantId])
+  @@index([productId])
+}
+
+model ProductOption {
+  id            String             @id @default(cuid())
+  groupId       String
+  group         ProductOptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name          String
+  priceModifier Float              @default(0)
+  isDefault     Boolean            @default(false)
+  sortOrder     Int                @default(0)
+
+  @@index([groupId])
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  orderNumber     String      @unique
+  id              String               @id @default(cuid())
+  tenantId        String
+  tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId        String?
+  branch          Branch?              @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  customerId      String?
+  customer        User?                @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  orderNumber     String               @unique
+
+  orderMode       OrderMode            @default(DELIVERY)
+  paymentMethod   PaymentMethod        @default(COD)
+  paymentStatus   PaymentStatus        @default(PENDING)
+  status          OrderStatus          @default(PENDING)
+
+  subtotal        Float
+  discount        Float                @default(0)
+  tax             Float                @default(0)
+  deliveryFee     Float                @default(0)
+  total           Float
+
   customerName    String
   customerPhone   String
   deliveryAddress String?
   landmark        String?
+  latitude        Float?
+  longitude       Float?
   notes           String?
-  orderMode       String      @default("DELIVERY")
-  branchId        String?
-  branch          Branch?     @relation(fields: [branchId], references: [id])
-  paymentMethod   String      @default("COD")
-  status          String      @default("PENDING") // PENDING, PREPARING, ON_THE_WAY, DELIVERED, CANCELLED
-  subtotal        Float
-  deliveryFee     Float       @default(0)
-  discount        Float       @default(0)
-  total           Float
+
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
   items           OrderItem[]
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  statusHistory   OrderStatusHistory[]
+  delivery        Delivery?
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([customerId])
+  @@index([status])
 }
 
 model OrderItem {
@@ -94,24 +389,158 @@ model OrderItem {
   orderId      String
   order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId    String?
-  product      Product? @relation(fields: [productId], references: [id])
+  product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
   productName  String
   quantity     Int      @default(1)
   unitPrice    Float
+  totalPrice   Float
   size         String?
-  crust        String?
-  flavor       String?
-  drink        String?
+  variant      String?
   addons       String?
   instructions String?
+  optionsJson  String?
+
+  @@index([orderId])
+}
+
+model OrderStatusHistory {
+  id        String       @id @default(cuid())
+  orderId   String
+  order     Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  oldStatus OrderStatus?
+  newStatus OrderStatus
+  changedBy String?
+  metadata  String?
+  timestamp DateTime     @default(now())
+
+  @@index([orderId])
+}
+
+model Rider {
+  id            String          @id @default(cuid())
+  tenantId      String
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId        String          @unique
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branchId      String?
+  branch        Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  vehicleType   String          @default("BIKE")
+  vehicleNumber String?
+  status        RiderStatus     @default(AVAILABLE)
+  isAvailable   Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  deliveries    Delivery[]
+  locations     RiderLocation[]
+
+  @@index([tenantId])
+  @@index([branchId])
+}
+
+model Delivery {
+  id              String         @id @default(cuid())
+  tenantId        String
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId        String?
+  branch          Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  orderId         String         @unique
+  order           Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  riderId         String?
+  rider           Rider?         @relation(fields: [riderId], references: [id], onDelete: SetNull)
+  status          DeliveryStatus @default(PENDING)
+
+  assignedAt      DateTime?
+  acceptedAt      DateTime?
+  pickedUpAt      DateTime?
+  deliveredAt     DateTime?
+
+  deliveryAddress String?
+  latitude        Float?
+  longitude       Float?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([tenantId])
+  @@index([riderId])
+}
+
+model RiderLocation {
+  id        String   @id @default(cuid())
+  riderId   String
+  rider     Rider    @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  latitude  Float
+  longitude Float
+  accuracy  Float?
+  heading   Float?
+  speed     Float?
+  timestamp DateTime @default(now())
+
+  @@index([riderId])
+  @@index([timestamp])
 }
 
 model Voucher {
-  id            String   @id @default(cuid())
-  code          String   @unique
-  discountType  String   @default("PERCENT") // PERCENT or FLAT
-  discountValue Float
-  minOrder      Float    @default(0)
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
+  id               String       @id @default(cuid())
+  tenantId         String
+  tenant           Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code             String
+  discountType     DiscountType @default(PERCENT)
+  discountValue    Float
+  minimumOrder     Float        @default(0)
+  maximumDiscount  Float?
+  usageLimit       Int?
+  perCustomerLimit Int          @default(1)
+  startDate        DateTime?
+  endDate          DateTime?
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model Banner {
+  id           String    @id @default(cuid())
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId     String?
+  branch       Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  title        String
+  subtitle     String?
+  desktopImage String
+  mobileImage  String?
+  buttonText   String?
+  buttonUrl    String?
+  sortOrder    Int       @default(0)
+  isActive     Boolean   @default(true)
+  startDate    DateTime?
+  endDate      DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([branchId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String
+  oldValue  String?
+  newValue  String?
+  ip        String?
+  userAgent String?
+  timestamp DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([entity])
 }
