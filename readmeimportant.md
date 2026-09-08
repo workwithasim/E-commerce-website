@@ -222,4 +222,68 @@ To test the real-time interaction between customer and kitchen:
 
 ---
 
+## 10. DOCKER DEPLOYMENT (PORTAINER / PRODUCTION)
+
+The project is fully containerized and ready for **one-click deployment from GitHub via Portainer**.
+
+### Stack Services (docker-compose.yml)
+
+| Service | Image | Port | Role |
+|---|---|---|---|
+| `cheezious_postgres` | `postgres:16-alpine` | `5432` | PostgreSQL database |
+| `cheezious_backend` | Built from `server/Dockerfile` | `5000` (internal) | Express + Prisma + Socket.io |
+| `cheezious_frontend` | Built from `client/Dockerfile` | `80` → `8080` | React (Vite) + Nginx reverse proxy |
+
+### Deploy via Portainer (GitHub)
+1. Open Portainer → **Stacks → Add stack**
+2. Select **Repository** build method
+3. Repository URL: `https://github.com/workwithasim/E-commerce-website.git`
+4. Branch: `refs/heads/main`
+5. Compose path: `docker-compose.yml`
+6. Enable **GitOps updates** (auto-redeploy on push)
+7. Click **Deploy the stack**
+
+### Access the Running App
+- **Frontend:** `http://localhost` (port 80)
+- **Backend API:** `http://localhost:5000/api`
+- **Admin Portal:** Click `⚡ Admin Portal` in the sidebar
+
+### Nginx Reverse Proxy
+Nginx routes:
+- `/` → React SPA (`dist/`)
+- `/api/` → `http://backend:5000/api/`
+- `/socket.io/` → `http://backend:5000/socket.io/` (WebSockets)
+
+---
+
+## 11. SIDEBAR (LEFT DRAWER) — Cheezious Exact Style
+
+The left slide-out drawer (opened via the red ☰ hamburger button) matches the **official Cheezious.com sidebar**:
+
+| Element | Description |
+|---|---|
+| **Yellow Avatar** | Circular yellow badge with person SVG icon |
+| **Login to explore** | Sub-label when user is not logged in |
+| **World of flavors** | Bold brand tagline |
+| **LOGIN / LOGOUT button** | Bordered button; shows LOGOUT when user is authenticated |
+| **Explore Menu** | Grid SVG icon + link to menu page |
+| **Branch Locator** | House SVG icon + link to branches page |
+| **Blog / Privacy Policy** | Plain text footer links |
+| **Admin Portal** | Settings icon + link (blue accent color) |
+| **Cheezious Hotline bar** | Yellow sticky footer with logo, text, and circular phone call button |
+
+---
+
+## 12. CHANGELOG
+
+| Date | Version | Change |
+|---|---|---|
+| 2026-09-09 | 2.3.0 | Exact Cheezious sidebar: avatar, login, SVG nav icons, hotline bar |
+| 2026-09-09 | 2.2.0 | Fixed Prisma OpenSSL detection (binaryTargets + libssl-dev) |
+| 2026-09-09 | 2.1.0 | Docker Portainer GitHub deployment (GitOps auto-redeploy) |
+| 2026-09-08 | 2.0.0 | Full PERN stack + Docker + 100% Cheezious UI parity |
+| 2026-09-08 | 1.0.0 | Initial full-stack PERN implementation |
+
+---
+
 *Crafted with 100% production rigor, enterprise TypeScript architecture, and extra cheese!* 🍕🧀🔥
