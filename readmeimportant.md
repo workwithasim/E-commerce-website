@@ -3,8 +3,8 @@
 > **Platform:** Full-Stack Enterprise Food Delivery Platform  
 > **Reference Website:** [https://cheezious.com/](https://cheezious.com/)  
 > **Brand Slogan:** *"The Cheeziest Food in Town"*  
-> **Tech Stack:** **PostgreSQL + Express.js + React.js + Node.js + TypeScript + WebSockets (Socket.io) + Docker**  
-> **Version:** 2.0.0 (Production-Grade Commercial Architecture)  
+> **Tech Stack:** **PostgreSQL + Express.js + React.js + Node.js + TypeScript + WebSockets (Socket.io)**  
+> **Version:** 3.0.0 (No-Docker Local Setup)  
 
 ---
 
@@ -16,44 +16,45 @@
 5. [PostgreSQL Database & Prisma Schema](#5-postgresql-database--prisma-schema)
 6. [API Endpoints Reference](#6-api-endpoints-reference)
 7. [Project Directory & File Structure](#7-project-directory--file-structure)
-8. [How to Launch (One-Click Start)](#8-how-to-launch-one-click-start)
+8. [How to Launch Locally (No Docker)](#8-how-to-launch-locally-no-docker)
 9. [Testing the Live Flow Step-by-Step](#9-testing-the-live-flow-step-by-step)
-10. [Customization & Production Deployment](#10-customization--production-deployment)
+10. [Sidebar — Cheezious Exact Style](#10-sidebar--cheezious-exact-style)
+11. [Changelog](#11-changelog)
 
 ---
 
 ## 1. SYSTEM OVERVIEW & ARCHITECTURE
 
 This platform is a **110% dynamic, production-grade Full-Stack PERN system** modeled after Cheezious Pakistan. Unlike static clones, this system includes:
-- **A Real Database:** PostgreSQL 16 (running via Docker) with Prisma ORM.
-- **A Real Backend:** Node.js (v24) + Express + TypeScript with bi-directional WebSockets (`Socket.io`).
+- **A Real Database:** PostgreSQL 16 with Prisma ORM.
+- **A Real Backend:** Node.js + Express + TypeScript with bi-directional WebSockets (`Socket.io`).
 - **A Dynamic Customer Storefront:** React + TypeScript + Vite with dynamic category/product loading, customization, cart, vouchers, and live order tracking.
 - **A Live Kitchen & Admin Portal:** Real-time incoming order sound/beeps, status progression (`PENDING` ➔ `PREPARING` ➔ `ON_THE_WAY` ➔ `DELIVERED`), dynamic product addition, price editing, and sales analytics.
 
 ```
-                  ┌───────────────────────────────────────────────┐
-                  │             PostgreSQL Database               │
-                  │   Users, Products, Categories, Orders, etc.   │
-                  └───────────────────────▲───────────────────────┘
-                                          │ (Prisma ORM)
-                  ┌───────────────────────┴───────────────────────┐
-                  │      Node.js Express + TypeScript Server      │
-                  │  - /api/products (110% Dynamic CRUD)          │
-                  │  - /api/orders (Create, Status Updates)       │
-                  │  - /api/categories, /api/branches             │
-                  │  - Socket.io Server (Real-Time Bidirectional) │
-                  └──────────────▲─────────────────▲──────────────┘
-                                 │                 │
-                (REST + WebSockets)               (REST + WebSockets)
-                                 │                 │
-     ┌───────────────────────────┴───┐         ┌───┴───────────────────────────┐
-     │      Customer Storefront      │         │     Admin & Kitchen Portal    │
-     │      (React + TypeScript)     │         │      (React + TypeScript)     │
-     │ - Dynamic Menu & Search       │         │ - Live Orders Feed & Sound    │
-     │ - Customization Modal         │         │ - Order Status Changer        │
-     │ - Persistent Cart & Vouchers  │         │ - Dynamic "Add Product" Modal │
-     │ - Real-Time Order Tracker     │         │ - Analytics (Sales, Revenue)  │
-     └───────────────────────────────┘         └───────────────────────────────┘
+              ┌───────────────────────────────────────────────┐
+              │             PostgreSQL Database               │
+              │   Users, Products, Categories, Orders, etc.   │
+              └───────────────────────▲───────────────────────┘
+                                      │ (Prisma ORM)
+              ┌───────────────────────┴───────────────────────┐
+              │      Node.js Express + TypeScript Server      │
+              │  - /api/products (110% Dynamic CRUD)          │
+              │  - /api/orders (Create, Status Updates)       │
+              │  - /api/categories, /api/branches             │
+              │  - Socket.io Server (Real-Time Bidirectional) │
+              └──────────────▲─────────────────▲──────────────┘
+                             │                 │
+             (REST + WebSockets)            (REST + WebSockets)
+                             │                 │
+ ┌─────────────────────────────┐         ┌────────────────────────────┐
+ │     Customer Storefront     │         │    Admin & Kitchen Portal  │
+ │     (React + TypeScript)    │         │     (React + TypeScript)   │
+ │ - Dynamic Menu & Search     │         │ - Live Orders Feed & Sound │
+ │ - Customization Modal       │         │ - Order Status Changer     │
+ │ - Persistent Cart & Vouchers│         │ - Dynamic Add Product      │
+ │ - Real-Time Order Tracker   │         │ - Analytics (Revenue)      │
+ └─────────────────────────────┘         └────────────────────────────┘
 ```
 
 ---
@@ -63,7 +64,7 @@ This platform is a **110% dynamic, production-grade Full-Stack PERN system** mod
 | Feature | Description |
 |---|---|
 | **110% Dynamic Catalog** | Products, prices, descriptions, images, and stock availability are pulled directly from PostgreSQL. If an admin edits a price or adds a new pizza, all customer screens update immediately. |
-| **Authentic Menu Pre-loaded** | The database is seeded with **127 authentic Cheezious products**, **36 categories**, and **61 nationwide branches** with high-resolution AWS S3 photography. |
+| **Authentic Menu Pre-loaded** | The database is seeded with **127 authentic Cheezious products**, **36 categories**, and **61 nationwide branches** with high-resolution photography. |
 | **Product Customizer** | Interactive modal for selecting sizes (Small, Regular, Large, Jumbo), crusts (Pan, Thin, Cheesy Stuffed, Crown Crust), flavors, beverages, and extra toppings with live price calculation. |
 | **Persistent Shopping Cart** | Cart items and selections are saved in `localStorage`, surviving browser refreshes. |
 | **Voucher Promo Engine** | Real backend validation for promo codes (`CHEEZY10` for 10% off, `WELCOME50` for Rs. 50 off, `SUPERCHEESE` for 15% off). |
@@ -74,7 +75,7 @@ This platform is a **110% dynamic, production-grade Full-Stack PERN system** mod
 
 ## 3. LIVE ADMIN & KITCHEN PORTAL
 
-Click the **"⚡ Admin / Kitchen Feed"** button in the top right header to switch to the Kitchen & Admin Dashboard:
+Click the **"⚡ Admin Portal"** link in the sidebar to switch to the Kitchen & Admin Dashboard:
 1. **Live Orders Queue (Kitchen Display System):**
    - Displays all active incoming customer orders in real time.
    - Emits an **audio beep notification** when a new order arrives.
@@ -153,16 +154,14 @@ Base URL: `http://localhost:5000`
 ```
 chezzious website layout/
 │
-├── start.sh                    # One-click startup script (Docker + Backend + Frontend)
-├── docker-compose.yml          # PostgreSQL 16 Alpine container configuration
-├── readmeimportant.md          # Comprehensive documentation (this file)
+├── readmeimportant.md          # This documentation file
 │
 ├── server/                     # Node.js + Express + TypeScript + Prisma Backend
 │   ├── .env                    # PostgreSQL connection string & PORT
 │   ├── package.json            # Server dependencies (Express, Socket.io, Prisma, tsx)
 │   ├── tsconfig.json           # Backend TypeScript configuration
 │   ├── prisma/
-│   │   ├── schema.prisma       # Relational database models (Orders, Products, Branches)
+│   │   ├── schema.prisma       # Relational database models
 │   │   └── seed.ts             # Auto-seed script with 127 products & 61 branches
 │   └── src/
 │       └── index.ts            # Express REST API & Socket.io WebSockets server
@@ -182,81 +181,124 @@ chezzious website layout/
 │           └── AdminDashboard.tsx # Kitchen Display System, Live Orders & Product CRUD
 │
 ├── data/                       # Scraped catalog assets (catalog.json, categories, products)
-└── assets/                     # Official Cheezious vector SVG logo (cheezious.svg)
+└── assets/                     # Official Cheezious vector SVG logo
 ```
 
 ---
 
-## 8. HOW TO LAUNCH (ONE-CLICK START)
+## 8. HOW TO LAUNCH LOCALLY (NO DOCKER)
 
-### Single Command Launch:
-Simply run:
+### Requirements
+- **Node.js** v18+ → [https://nodejs.org](https://nodejs.org)
+- **PostgreSQL** v14+ → [https://www.postgresql.org/download](https://www.postgresql.org/download)
+
+---
+
+### Step 1 — Install & Start PostgreSQL
+
+**On Ubuntu/Debian Linux:**
 ```bash
-./start.sh
+sudo apt update
+sudo apt install postgresql postgresql-contrib -y
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
 ```
 
-This script will automatically:
-1. Load Node.js v24.
-2. Start the PostgreSQL 16 database in Docker on port `5432`.
-3. Synchronize database schema via Prisma.
-4. Launch the Express + Socket.io backend on **`http://localhost:5000`**.
-5. Launch the React + TypeScript frontend on **`http://localhost:5173`**.
+**On Windows:**  
+Download & install from [postgresql.org](https://www.postgresql.org/download/windows/), then start the service.
+
+**On macOS:**
+```bash
+brew install postgresql@16
+brew services start postgresql@16
+```
+
+---
+
+### Step 2 — Create the Database
+
+```bash
+sudo -u postgres psql
+```
+Then inside psql:
+```sql
+CREATE DATABASE cheezious_db;
+CREATE USER cheezious_user WITH PASSWORD 'cheezious123';
+GRANT ALL PRIVILEGES ON DATABASE cheezious_db TO cheezious_user;
+\q
+```
+
+---
+
+### Step 3 — Configure Backend Environment
+
+Edit `server/.env` (create if not exists):
+```env
+DATABASE_URL="postgresql://cheezious_user:cheezious123@localhost:5432/cheezious_db"
+PORT=5000
+JWT_SECRET=cheezious_super_secret_key
+```
+
+---
+
+### Step 4 — Start the Backend
+
+```bash
+cd server
+npm install
+npx prisma db push
+npx tsx prisma/seed.ts
+npm run dev
+```
+
+Backend will start at: **`http://localhost:5000`** ✅
+
+---
+
+### Step 5 — Start the Frontend (New Terminal)
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+Frontend will start at: **`http://localhost:5173`** ✅
+
+---
+
+### Step 6 — Open in Browser
+
+```
+http://localhost:5173
+```
 
 ---
 
 ## 9. TESTING THE LIVE FLOW STEP-BY-STEP
-
-To test the real-time interaction between customer and kitchen:
 
 1. Open **`http://localhost:5173/`** in your browser.
 2. Add a Pizza (e.g. *Crown Crust Pizza*) to your cart, customize crust and toppings.
 3. Open the Cart Drawer, type coupon code **`CHEEZY10`** and click **Apply** (10% discount applied).
 4. Click **Proceed to Checkout**, enter your name and phone, and click **Confirm & Place Order**.
 5. You will see the **Live Order Tracker** screen showing `Order Placed`.
-6. Now open another tab or click the header button **"⚡ Admin / Kitchen Feed"**:
+6. Click the **☰ hamburger menu** → **Admin Portal**:
    - You will see the new order in the kitchen feed with an alert banner!
 7. Click **`👨‍🍳 Accept & Start Baking`**:
-   - Return to the customer tab: Notice that the customer's stepper has **automatically moved to "Kitchen Preparing" in real-time via WebSockets**!
+   - Return to the customer tab: the customer's stepper **automatically moved to "Kitchen Preparing" via WebSockets**!
 8. Click **`🛵 Rider Dispatched`** then **`✓ Mark Delivered`**:
    - Watch the customer's screen celebrate with the completed delivery status!
 
----
-
-## 10. DOCKER DEPLOYMENT (PORTAINER / PRODUCTION)
-
-The project is fully containerized and ready for **one-click deployment from GitHub via Portainer**.
-
-### Stack Services (docker-compose.yml)
-
-| Service | Image | Port | Role |
-|---|---|---|---|
-| `cheezious_postgres` | `postgres:16-alpine` | `5432` | PostgreSQL database |
-| `cheezious_backend` | Built from `server/Dockerfile` | `5000` (internal) | Express + Prisma + Socket.io |
-| `cheezious_frontend` | Built from `client/Dockerfile` | `80` → `8080` | React (Vite) + Nginx reverse proxy |
-
-### Deploy via Portainer (GitHub)
-1. Open Portainer → **Stacks → Add stack**
-2. Select **Repository** build method
-3. Repository URL: `https://github.com/workwithasim/E-commerce-website.git`
-4. Branch: `refs/heads/main`
-5. Compose path: `docker-compose.yml`
-6. Enable **GitOps updates** (auto-redeploy on push)
-7. Click **Deploy the stack**
-
-### Access the Running App
-- **Frontend:** `http://localhost` (port 80)
-- **Backend API:** `http://localhost:5000/api`
-- **Admin Portal:** Click `⚡ Admin Portal` in the sidebar
-
-### Nginx Reverse Proxy
-Nginx routes:
-- `/` → React SPA (`dist/`)
-- `/api/` → `http://backend:5000/api/`
-- `/socket.io/` → `http://backend:5000/socket.io/` (WebSockets)
+### Test Voucher Codes
+| Code | Discount |
+|---|---|
+| `CHEEZY10` | 10% off |
+| `WELCOME50` | Rs. 50 off |
+| `SUPERCHEESE` | 15% off |
 
 ---
 
-## 11. SIDEBAR (LEFT DRAWER) — Cheezious Exact Style
+## 10. SIDEBAR — CHEEZIOUS EXACT STYLE
 
 The left slide-out drawer (opened via the red ☰ hamburger button) matches the **official Cheezious.com sidebar**:
 
@@ -274,10 +316,11 @@ The left slide-out drawer (opened via the red ☰ hamburger button) matches the 
 
 ---
 
-## 12. CHANGELOG
+## 11. CHANGELOG
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-09-09 | 3.0.0 | Removed Docker — local PostgreSQL + Node.js setup only |
 | 2026-09-09 | 2.3.0 | Exact Cheezious sidebar: avatar, login, SVG nav icons, hotline bar |
 | 2026-09-09 | 2.2.0 | Fixed Prisma OpenSSL detection (binaryTargets + libssl-dev) |
 | 2026-09-09 | 2.1.0 | Docker Portainer GitHub deployment (GitOps auto-redeploy) |
