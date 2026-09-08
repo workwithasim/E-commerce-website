@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api, socket } from './api';
 import { Product, Category, Branch, CartItem, Order } from './types';
-import { AdminDashboard } from './admin/AdminDashboard';
+import { AuthUser } from './LoginPage';
 
-export const App: React.FC = () => {
+interface AppProps {
+  authUser: AuthUser;
+  onLogout: () => void;
+}
+
+export const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
   // Navigation: 'menu' | 'deals' | 'branches' | 'track' | 'account' | 'admin'
   const [currentPage, setCurrentPage] = useState<'menu' | 'deals' | 'branches' | 'track' | 'account' | 'admin'>('menu');
 

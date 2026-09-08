@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { api, socket } from '../api';
 import { Product, Category, Order, AnalyticsStats } from '../types';
+import { AuthUser } from '../LoginPage';
 
 interface AdminDashboardProps {
-  onBackToStore: () => void;
+  onBackToStore?: () => void;
+  onLogout?: () => void;
+  authUser?: AuthUser;
+  kitchenOnly?: boolean;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToStore }) => {
-  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'analytics'>('orders');
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToStore, onLogout, authUser, kitchenOnly }) => {
+  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'analytics'>(kitchenOnly ? 'orders' : 'orders');
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);

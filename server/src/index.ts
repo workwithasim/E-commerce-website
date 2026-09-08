@@ -4,6 +4,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
+import authRoutes from './routes/auth';
 
 dotenv.config();
 
@@ -21,6 +22,10 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+
+// Auth routes
+app.use('/api/auth', authRoutes);
+
 
 // ============================================================================
 // WEBSOCKETS (REAL-TIME ORDER SYNC BETWEEN CUSTOMER & KITCHEN/ADMIN)

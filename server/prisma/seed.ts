@@ -112,6 +112,26 @@ async function main() {
   }
 
   console.log('✅ PostgreSQL Database seeded successfully with authentic Cheezious catalog!');
+
+  // 4. Seed Default User Accounts
+  const bcrypt = await import('bcryptjs');
+  const defaultUsers = [
+    { name: 'Super Admin',   email: 'admin@cheezious.com',    password: 'Admin@123',    role: 'ADMIN'    as const, phone: '03001234567' },
+    { name: 'Kitchen Staff', email: 'kitchen@cheezious.com',  password: 'Kitchen@123',  role: 'KITCHEN'  as const, phone: '03011234567' },
+    { name: 'Delivery Rider',email: 'rider@cheezious.com',    password: 'Rider@123',    role: 'RIDER'    as const, phone: '03021234567' },
+    { name: 'Test Customer', email: 'customer@cheezious.com', password: 'Customer@123', role: 'CUSTOMER' as const, phone: '03031234567' },
+  ];
+
+  for (const u of defaultUsers) {
+    const hashed = await bcrypt.hash(u.password, 10);
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: { name: u.name, role: u.role, phone: u.phone },
+      create: { name: u.name, email: u.email, password: hashed, role: u.role, phone: u.phone },
+    });
+    console.log(`  👤 ${u.role}: ${u.email} / ${u.password}`);
+  }
+  console.log('✅ Default user accounts seeded!');
 }
 
 main()
