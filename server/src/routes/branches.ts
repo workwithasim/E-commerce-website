@@ -52,6 +52,7 @@ router.patch('/:id/toggle', authenticateJWT, requireTenantIsolation, requireRole
       });
     }
 
+    if (req.user!.role === 'BRANCH_MANAGER' && !await prisma.branchStaff.findFirst({ where: { userId: req.user!.id, branchId: id } })) return res.status(403).json({ success: false, error: { message: 'Branch access denied' } });
     const updated = await prisma.branch.update({
       where: { id },
       data: { isOpen: !branch.isOpen },
@@ -59,7 +60,7 @@ router.patch('/:id/toggle', authenticateJWT, requireTenantIsolation, requireRole
 
     try {
       getIO().to(`branch:${id}`).emit('branch:status_updated', updated);
-      getIO().to(`tenant:${tenantId}`).emit('branch:status_updated', updated);
+      getIO().to(`catalog:${tenantId}`).emit('branch:status_updated', updated);
     } catch (e) {
       // socket silent catch
     }

@@ -28,7 +28,7 @@ initSocketIO(server);
 
 const PORT = process.env.PORT || 5000;
 
-app.use(cors({ origin: '*' }));
+app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173' }));
 app.use(express.json());
 
 // ── HEALTH CHECK ───────────────────────────────────────────────────
@@ -55,6 +55,7 @@ app.get('/api/health', async (req: Request, res: Response) => {
 // Applies to all /api routes except tenant creation/listing & health
 app.use((req, res, next) => {
   if (
+    req.path.endsWith('/auth/login') || req.path.endsWith('/auth/me') ||
     req.path === '/api/health' ||
     req.path === '/api/v1/health' ||
     (req.path === '/api/v1/tenants' && req.method === 'GET') ||
@@ -87,7 +88,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/vouchers', voucherRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// ── CENTRALIZED ERROR HANDLER (PRD SECTION 74) ──────────────────────
+// ── CENTRALIZED ERROR HANDLER  ──────────────────────
 app.use((err: any, req: Request, res: Response, next: any) => {
   console.error('Unhandled Server Error:', err);
   res.status(err.status || 500).json({

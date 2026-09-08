@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma';
 
 export interface CartItemInput {
@@ -39,29 +40,36 @@ export async function calculateOrderPricing(
   items: CartItemInput[],
   branchId?: string,
   orderMode: 'DELIVERY' | 'TAKEAWAY' | 'DINE_IN' = 'DELIVERY',
-  voucherCode?: string
+  voucherCode?: string,
+  db: Prisma.TransactionClient = prisma
 ): Promise<PricingCalculationResult> {
-  if (!items || items.length === 0) {
+  if (!Array.isArray(items) || items.length === 0 || items.length > 100) {
     throw new Error('Cart cannot be empty');
   }
 
   // 1. Fetch tenant settings & branch
-  const tenantSettings = await prisma.tenantSettings.findUnique({
+  const tenantSettings = await db.tenantSettings.findUnique({
     where: { tenantId },
   });
 
   const branch = branchId
-    ? await prisma.branch.findFirst({ where: { id: branchId, tenantId } })
+    ? await db.branch.findFirst({ where: { id: branchId, tenantId } })
     : null;
 
+  if (!branch || !branch.isOpen) throw new Error('Select an open branch in this restaurant');
+  if (!['DELIVERY', 'TAKEAWAY', 'DINE_IN'].includes(orderMode)) throw new Error('Invalid order mode');
+  if (orderMode === 'DINE_IN') throw new Error('Dine-in ordering is not available yet');
+  if ((orderMode === 'DELIVERY' && tenantSettings?.deliveryEnabled === false) || (orderMode === 'TAKEAWAY' && tenantSettings?.takeawayEnabled === false)) throw new Error('This order mode is disabled');
   // 2. Authoritatively resolve every product and option from database
   let subtotal = 0;
   const processedItems = [];
 
   for (const item of items) {
-    const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
-    const product = await prisma.product.findFirst({
+    if (!item || typeof item.productId !== 'string' || !Number.isSafeInteger(item.quantity) || item.quantity < 1 || item.quantity > 99) throw new Error('Quantity must be an integer between 1 and 99');
+    const quantity = item.quantity;
+    const product = await db.product.findFirst({
       where: { id: item.productId, tenantId },
+      include: { optionGroups: { include: { options: true } } },
     });
 
     if (!product) {
@@ -76,22 +84,17 @@ export async function calculateOrderPricing(
     let optionPriceModifier = 0;
     const selectedOptionsDetails: Array<{ id: string; name: string; priceModifier: number }> = [];
 
-    if (item.optionIds && item.optionIds.length > 0) {
-      const options = await prisma.productOption.findMany({
-        where: { id: { in: item.optionIds } },
-        include: { group: true },
-      });
-
-      for (const opt of options) {
-        // Verify option belongs to this tenant
-        if (opt.group.tenantId === tenantId) {
-          optionPriceModifier += opt.priceModifier;
-          selectedOptionsDetails.push({
-            id: opt.id,
-            name: `${opt.group.name}: ${opt.name}`,
-            priceModifier: opt.priceModifier,
-          });
-        }
+    const ids = item.optionIds ?? [];
+    if (!Array.isArray(ids) || ids.some(id => typeof id !== 'string') || new Set(ids).size !== ids.length) throw new Error('Invalid option selection');
+    const available = product.optionGroups.flatMap(g => g.options);
+    if (ids.some(id => !available.some(opt => opt.id === id))) throw new Error('Option does not belong to this product');
+    for (const group of product.optionGroups) {
+      if (group.tenantId !== tenantId) throw new Error('Invalid product configuration');
+      const selected = group.options.filter(opt => ids.includes(opt.id));
+      if (selected.length < Math.max(group.minSelect, group.isRequired ? 1 : 0) || selected.length > group.maxSelect) throw new Error(`Select ${group.minSelect}-${group.maxSelect} options for ${group.name}`);
+      for (const opt of selected) {
+        optionPriceModifier += opt.priceModifier;
+        selectedOptionsDetails.push({ id: opt.id, name: `${group.name}: ${opt.name}`, priceModifier: opt.priceModifier });
       }
     }
 
@@ -111,7 +114,7 @@ export async function calculateOrderPricing(
       totalPrice,
       size: sizeOpt?.name,
       variant: crustOpt?.name,
-      addons: item.addons ? item.addons.join(', ') : undefined,
+
       instructions: item.instructions || undefined,
       optionsJson: JSON.stringify(selectedOptionsDetails),
     });
@@ -120,7 +123,7 @@ export async function calculateOrderPricing(
   // 3. Minimum order validation
   const minOrder = branch?.minimumOrder ?? tenantSettings?.minimumOrder ?? 0;
   if (subtotal < minOrder) {
-    throw new Error(`Minimum order amount of Rs. ${minOrder} required (current subtotal: Rs. ${subtotal})`);
+    throw new Error(`Minimum order amount of ${tenantSettings?.currencySymbol || ""} ${minOrder} required (current subtotal: ${subtotal})`);
   }
 
   // 4. Delivery fee calculation
@@ -136,31 +139,33 @@ export async function calculateOrderPricing(
   let voucherData = undefined;
 
   if (voucherCode) {
-    const voucher = await prisma.voucher.findFirst({
+    const voucher = await db.voucher.findFirst({
       where: {
         tenantId,
-        code: voucherCode.toUpperCase(),
+        code: String(voucherCode).trim().toUpperCase(),
         isActive: true,
       },
     });
 
+    if (!voucher) throw new Error('Invalid voucher');
     if (voucher) {
       const now = new Date();
       const isStarted = !voucher.startDate || voucher.startDate <= now;
       const isNotExpired = !voucher.endDate || voucher.endDate >= now;
       const meetsMinOrder = subtotal >= voucher.minimumOrder;
 
+      if (!isStarted || !isNotExpired || !meetsMinOrder) throw new Error('Voucher is expired, not started, or minimum order is not met');
+      if (voucher.usageLimit !== null) throw new Error('Usage-limited vouchers are not supported yet');
       if (isStarted && isNotExpired && meetsMinOrder) {
         if (voucher.discountType === 'PERCENT') {
           discount = Math.round((subtotal * voucher.discountValue) / 100);
         } else if (voucher.discountType === 'FIXED') {
           discount = voucher.discountValue;
         } else if (voucher.discountType === 'FREE_DELIVERY') {
-          discount = deliveryFee;
-          deliveryFee = 0;
+          deliveryFee = Math.max(0, deliveryFee - (voucher.maximumDiscount ?? deliveryFee));
         }
 
-        if (voucher.maximumDiscount && discount > voucher.maximumDiscount) {
+        if (voucher.maximumDiscount !== null && discount > voucher.maximumDiscount) {
           discount = voucher.maximumDiscount;
         }
 
@@ -184,6 +189,7 @@ export async function calculateOrderPricing(
 
   // 7. Authoritative Total
   const total = Math.max(0, subtotal - discount + deliveryFee + tax);
+  if (!Number.isFinite(total)) throw new Error('Invalid price configuration');
 
   return {
     subtotal,

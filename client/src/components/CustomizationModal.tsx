@@ -1,3 +1,4 @@
+import { useTenant } from '../theme/ThemeProvider';
 import React, { useState } from 'react';
 import { Product, ProductOption, CartItem, CartItemOptionSelection } from '../types';
 
@@ -12,6 +13,8 @@ export const CustomizationModal: React.FC<CustomizationModalProps> = ({
   onClose,
   onAddToCart,
 }) => {
+  const { settings } = useTenant();
+  const money = (value: number) => `${settings?.currencySymbol || ''} ${value.toLocaleString()}`;
   const [quantity, setQuantity] = useState(1);
   const [instructions, setInstructions] = useState('');
 
@@ -82,7 +85,7 @@ export const CustomizationModal: React.FC<CustomizationModalProps> = ({
     if (product.optionGroups) {
       for (const g of product.optionGroups) {
         const sel = selectedOptionIds[g.id] || [];
-        if (g.isRequired && sel.length === 0) {
+        if (sel.length < Math.max(g.minSelect, g.isRequired ? 1 : 0) || sel.length > g.maxSelect) {
           alert(`Please select an option for "${g.name}"`);
           return;
         }
@@ -174,10 +177,10 @@ export const CustomizationModal: React.FC<CustomizationModalProps> = ({
           </p>
 
           <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-primary, #E32726)', marginBottom: '18px' }}>
-            Base Price: Rs. {basePrice}
+            Base Price: {money(basePrice)}
           </div>
 
-          {/* Generic Option Groups (PRD Section 15) */}
+          {/* Generic Option Groups  */}
           {product.optionGroups && product.optionGroups.length > 0 ? (
             product.optionGroups.map((group) => {
               const selected = selectedOptionIds[group.id] || [];
@@ -229,7 +232,7 @@ export const CustomizationModal: React.FC<CustomizationModalProps> = ({
                           </div>
 
                           <span style={{ fontSize: '0.85rem', fontWeight: 700, color: opt.priceModifier > 0 ? 'var(--color-primary, #E32726)' : '#64748B' }}>
-                            {opt.priceModifier > 0 ? `+Rs. ${opt.priceModifier}` : 'Free'}
+                            {opt.priceModifier > 0 ? `+${money(opt.priceModifier)}` : 'Free'}
                           </span>
                         </div>
                       );
@@ -289,7 +292,7 @@ export const CustomizationModal: React.FC<CustomizationModalProps> = ({
             </button>
             <span style={{ fontWeight: 700, minWidth: '24px', textAlign: 'center' }}>{quantity}</span>
             <button
-              onClick={() => setQuantity(quantity + 1)}
+              onClick={() => setQuantity(Math.min(99, quantity + 1))}
               style={{ width: '32px', height: '32px', borderRadius: '6px', background: '#F1F5F9', fontWeight: 800, fontSize: '16px' }}
             >
               +
@@ -315,7 +318,7 @@ export const CustomizationModal: React.FC<CustomizationModalProps> = ({
             }}
           >
             <span>Add to Cart</span>
-            <span>Rs. {totalPrice}</span>
+            <span>{money(totalPrice)}</span>
           </button>
         </div>
       </div>

@@ -12,14 +12,19 @@ import { getToken, removeToken, api } from './api';
 import './styles.css';
 
 const MainApp: React.FC = () => {
-  const { tenant, loading: tenantLoading } = useTenant();
+  const { tenant, loading: tenantLoading, error: tenantError, refreshTenant } = useTenant();
   const [user, setUser] = useState<AuthUser | null>(() => {
-    const saved = localStorage.getItem('platform_auth_user');
-    return saved ? JSON.parse(saved) : null;
+    try { const saved = localStorage.getItem('platform_auth_user'); return saved ? JSON.parse(saved) : null; } catch { return null; }
   });
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showSuperAdmin, setShowSuperAdmin] = useState(false);
   const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const clear = () => setUser(null);
+    window.addEventListener('platform:logout', clear);
+    return () => window.removeEventListener('platform:logout', clear);
+  }, []);
 
   // Verify token on mount
   useEffect(() => {
@@ -45,6 +50,7 @@ const MainApp: React.FC = () => {
 
   const handleLogin = (loggedInUser: AuthUser) => {
     setUser(loggedInUser);
+    setShowSuperAdmin(loggedInUser.role === 'SUPER_ADMIN');
     setShowLoginModal(false);
   };
 
@@ -54,6 +60,8 @@ const MainApp: React.FC = () => {
     setUser(null);
     setShowSuperAdmin(false);
   };
+
+  if (tenantError) return <div className="platform-error"><h1>Restaurant unavailable</h1><p>{tenantError}</p><button onClick={refreshTenant}>Retry</button></div>;
 
   if (checking || tenantLoading) {
     return (
@@ -70,10 +78,10 @@ const MainApp: React.FC = () => {
         <div style={{ textAlign: 'center', color: '#FEDC00' }}>
           <div style={{ fontSize: '3.5rem', marginBottom: '16px', animation: 'bounce 1s infinite' }}>🍔</div>
           <div style={{ fontWeight: 800, fontSize: '1.2rem', color: '#F8FAFC' }}>
-            Initializing Restaurant Platform...
+            Loading restaurant…
           </div>
           <div style={{ fontSize: '0.85rem', color: '#94A3B8', marginTop: '6px' }}>
-            Resolving tenant branding and configuration
+            Getting your menu ready
           </div>
         </div>
       </div>
@@ -81,10 +89,10 @@ const MainApp: React.FC = () => {
   }
 
   // 1. Super Admin View (triggered explicitly or by login role)
-  if (showSuperAdmin || user?.role === 'SUPER_ADMIN') {
+  if (showSuperAdmin && user?.role === 'SUPER_ADMIN') {
     return (
       <>
-        <TenantSwitcher onOpenSuperAdmin={() => setShowSuperAdmin(true)} />
+        <TenantSwitcher onOpenSuperAdmin={user?.role === 'SUPER_ADMIN' ? () => setShowSuperAdmin(true) : undefined} />
         <SuperAdminDashboard onLogout={handleLogout} onClose={() => setShowSuperAdmin(false)} />
       </>
     );
@@ -94,7 +102,7 @@ const MainApp: React.FC = () => {
   if (user && (user.role === 'KITCHEN_STAFF' || user.role === 'KITCHEN_MANAGER')) {
     return (
       <>
-        <TenantSwitcher onOpenSuperAdmin={() => setShowSuperAdmin(true)} />
+        <TenantSwitcher />
         <KitchenDisplay onLogout={handleLogout} />
       </>
     );
@@ -104,7 +112,7 @@ const MainApp: React.FC = () => {
   if (user && user.role === 'RIDER') {
     return (
       <>
-        <TenantSwitcher onOpenSuperAdmin={() => setShowSuperAdmin(true)} />
+        <TenantSwitcher />
         <RiderDashboard user={user} onLogout={handleLogout} />
       </>
     );
@@ -114,8 +122,8 @@ const MainApp: React.FC = () => {
   if (user && (user.role === 'TENANT_ADMIN' || user.role === 'BRANCH_MANAGER')) {
     return (
       <>
-        <TenantSwitcher onOpenSuperAdmin={() => setShowSuperAdmin(true)} />
-        <AdminDashboard authUser={user} onLogout={handleLogout} onBackToStore={() => setUser(null)} />
+        <TenantSwitcher />
+        <AdminDashboard authUser={user} onLogout={handleLogout} onBackToStore={handleLogout} />
       </>
     );
   }
@@ -123,8 +131,8 @@ const MainApp: React.FC = () => {
   // 5. Default: Customer Storefront with Login modal
   return (
     <>
-      <TenantSwitcher onOpenSuperAdmin={() => setShowSuperAdmin(true)} />
-      <App
+      <TenantSwitcher onOpenSuperAdmin={user?.role === 'SUPER_ADMIN' ? () => setShowSuperAdmin(true) : undefined} />
+      <App key={tenant?.id}
         authUser={user}
         onLogout={handleLogout}
         onOpenLogin={() => setShowLoginModal(true)}

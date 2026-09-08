@@ -124,6 +124,8 @@ router.post('/', authenticateJWT, requireTenantIsolation, requireRole([UserRole.
       });
     }
 
+    if (categoryId && !await prisma.category.findFirst({ where: { id: categoryId, tenantId } })) return res.status(400).json({ success: false, error: { message: 'Invalid category' } });
+    if (!Number.isFinite(Number(basePrice)) || Number(basePrice) < 0) return res.status(400).json({ success: false, error: { message: 'Invalid price' } });
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const product = await prisma.product.create({
       data: {
@@ -144,7 +146,7 @@ router.post('/', authenticateJWT, requireTenantIsolation, requireRole([UserRole.
     });
 
     try {
-      getIO().to(`tenant:${tenantId}`).emit('product:added', product);
+      getIO().to(`catalog:${tenantId}`).emit('product:added', product);
     } catch (e) {
       // socket silent catch
     }
@@ -162,7 +164,7 @@ router.post('/', authenticateJWT, requireTenantIsolation, requireRole([UserRole.
 });
 
 // ── PUT /api/v1/products/:id (Admin Update Product & Stock) ──────────
-router.put('/:id', authenticateJWT, requireTenantIsolation, requireRole([UserRole.TENANT_ADMIN, UserRole.BRANCH_MANAGER, UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
+router.put('/:id', authenticateJWT, requireTenantIsolation, requireRole([UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenant!.id;
@@ -189,6 +191,9 @@ router.put('/:id', authenticateJWT, requireTenantIsolation, requireRole([UserRol
       });
     }
 
+    for (const value of [basePrice, discountedPrice]) {
+      if (value !== undefined && value !== null && (typeof value !== 'number' || !Number.isFinite(value) || value < 0)) return res.status(400).json({ success: false, error: { message: 'Prices must be non-negative numbers' } });
+    }
     const updated = await prisma.product.update({
       where: { id },
       data: {
@@ -206,7 +211,7 @@ router.put('/:id', authenticateJWT, requireTenantIsolation, requireRole([UserRol
     });
 
     try {
-      getIO().to(`tenant:${tenantId}`).emit('product:updated', updated);
+      getIO().to(`catalog:${tenantId}`).emit('product:updated', updated);
     } catch (e) {
       // socket silent catch
     }
@@ -237,6 +242,9 @@ router.post('/:id/options', authenticateJWT, requireTenantIsolation, requireRole
       });
     }
 
+    if (!await prisma.product.findFirst({ where: { id, tenantId } })) return res.status(404).json({ success: false, error: { message: 'Product not found' } });
+    const min = minSelect ?? 0, max = maxSelect ?? 1;
+    if (!Number.isInteger(min) || !Number.isInteger(max) || min < 0 || max < Math.max(min, isRequired ? 1 : 0) || max > options.length || options.some((o: any) => !o || typeof o.name !== 'string' || !o.name.trim() || !Number.isFinite(Number(o.priceModifier ?? 0)))) return res.status(400).json({ success: false, error: { message: 'Invalid option group' } });
     const group = await prisma.productOptionGroup.create({
       data: {
         tenantId,
@@ -289,7 +297,7 @@ router.delete('/:id', authenticateJWT, requireTenantIsolation, requireRole([User
     await prisma.product.delete({ where: { id } });
 
     try {
-      getIO().to(`tenant:${tenantId}`).emit('product:deleted', id);
+      getIO().to(`catalog:${tenantId}`).emit('product:deleted', id);
     } catch (e) {
       // socket silent catch
     }

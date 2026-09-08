@@ -150,6 +150,7 @@ async function main() {
   if (fs.existsSync(catalogPath)) {
     const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf-8'));
 
+    await prisma.productOptionGroup.deleteMany({ where: { tenantId: cheezious.id } });
     // Categories
     console.log(`Seeding ${catalog.categories.length} Cheezious categories...`);
     const catIdMap: Record<string, string> = {};
@@ -305,6 +306,7 @@ async function main() {
     });
   }
 
+  await prisma.banner.deleteMany({ where: { tenantId: cheezious.id } });
   // Cheezious Banners
   await prisma.banner.create({
     data: {
@@ -432,6 +434,8 @@ async function main() {
     }
   }
 
+  await prisma.productOptionGroup.deleteMany({ where: { tenantId: savour.id } });
+  await prisma.banner.deleteMany({ where: { tenantId: savour.id } });
   // Savour Branches
   const savourBranches = [
     { name: 'Blue Area Branch', city: 'Islamabad', address: 'Block H, Commercial Area, Blue Area, Islamabad', phone: '051-2828282' },
@@ -439,6 +443,8 @@ async function main() {
     { name: 'Peshawar Road Branch', city: 'Rawalpindi', address: 'Main Peshawar Road, Near Charing Cross, Rawalpindi', phone: '051-5464646' },
   ];
   for (const b of savourBranches) {
+    const existingBranch = await prisma.branch.findFirst({ where: { tenantId: savour.id, name: b.name } });
+    if (existingBranch) continue;
     await prisma.branch.create({
       data: {
         tenantId: savour.id,
@@ -623,8 +629,10 @@ async function main() {
   }
 
   // Savour Vouchers
-  await prisma.voucher.create({
-    data: {
+  await prisma.voucher.upsert({
+    where: { tenantId_code: { tenantId: savour.id, code: 'SAVOUR10' } },
+    update: {},
+    create: {
       tenantId: savour.id,
       code: 'SAVOUR10',
       discountType: DiscountType.PERCENT,
@@ -646,6 +654,14 @@ async function main() {
     },
   });
 
+  // Local demo staff have explicit branch memberships; authorization never infers them.
+  for (const tenantId of [cheezious.id, savour.id]) {
+    const branch = await prisma.branch.findFirst({ where: { tenantId }, orderBy: { name: 'asc' } });
+    if (branch) {
+      const staff = await prisma.user.findMany({ where: { tenantId, role: { in: ['KITCHEN_STAFF', 'KITCHEN_MANAGER', 'BRANCH_MANAGER'] } } });
+      for (const u of staff) await prisma.branchStaff.upsert({ where: { branchId_userId: { branchId: branch.id, userId: u.id } }, update: { role: u.role }, create: { branchId: branch.id, userId: u.id, role: u.role } });
+    }
+  }
   console.log('\n================================================================');
   console.log('🎉 Multi-Tenant Seed Finished Successfully!');
   console.log('================================================================');

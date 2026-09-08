@@ -165,7 +165,7 @@ export const SuperAdminDashboard: React.FC<{ onLogout: () => void; onClose?: () 
           <div style={kpiCardStyle}>
             <span style={{ color: '#9CA3AF', fontSize: '0.85rem', fontWeight: 600 }}>ACTIVE RESTAURANTS</span>
             <div style={{ fontSize: '2rem', fontWeight: 900, color: '#38BDF8', marginTop: '4px' }}>
-              {stats?.activeTenants ?? 2}
+              {stats?.activeTenants ?? '—'}
             </div>
             <span style={{ fontSize: '0.75rem', color: '#10B981' }}>● Shared SaaS Architecture</span>
           </div>
@@ -173,7 +173,7 @@ export const SuperAdminDashboard: React.FC<{ onLogout: () => void; onClose?: () 
           <div style={kpiCardStyle}>
             <span style={{ color: '#9CA3AF', fontSize: '0.85rem', fontWeight: 600 }}>TOTAL BRANCHES NATIONWIDE</span>
             <div style={{ fontSize: '2rem', fontWeight: 900, color: '#FBBF24', marginTop: '4px' }}>
-              {stats?.totalBranches ?? 64}
+              {stats?.totalBranches ?? '—'}
             </div>
             <span style={{ fontSize: '0.75rem', color: '#9CA3AF' }}>Across all tenants</span>
           </div>
@@ -189,7 +189,7 @@ export const SuperAdminDashboard: React.FC<{ onLogout: () => void; onClose?: () 
           <div style={kpiCardStyle}>
             <span style={{ color: '#9CA3AF', fontSize: '0.85rem', fontWeight: 600 }}>PLATFORM GROSS VOLUME</span>
             <div style={{ fontSize: '2rem', fontWeight: 900, color: '#34D399', marginTop: '4px' }}>
-              Rs. {stats?.totalPlatformRevenue?.toLocaleString() ?? 0}
+              {stats?.revenueByCurrency?.map((r: any) => `${r.currency}: ${r.total.toLocaleString()}`).join(' · ') || '—'}
             </div>
             <span style={{ fontSize: '0.75rem', color: '#10B981' }}>authoritative server pricing</span>
           </div>

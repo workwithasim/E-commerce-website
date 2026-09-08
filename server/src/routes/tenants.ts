@@ -116,7 +116,7 @@ router.post('/', authenticateJWT, requireRole([UserRole.SUPER_ADMIN]), async (re
           settings: {
             create: {
               currency: currency || 'PKR',
-              currencySymbol: currency === 'USD' ? '$' : 'Rs.',
+              currencySymbol: ({ USD: '$', PKR: 'Rs.', AED: 'AED' } as Record<string, string>)[currency || 'PKR'] || currency,
               minimumOrder: 500,
               deliveryFee: 100,
               freeDeliveryThreshold: 2000,
@@ -245,10 +245,15 @@ router.put('/:id/settings', authenticateJWT, requireRole([UserRole.SUPER_ADMIN, 
       });
     }
 
+    const allowed = ['currency', 'currencySymbol', 'country', 'timezone', 'minimumOrder', 'deliveryFee', 'freeDeliveryThreshold', 'taxEnabled', 'taxRate', 'takeawayEnabled', 'deliveryEnabled', 'cashOnDeliveryEnabled', 'customerRegistrationEnabled', 'reviewsEnabled', 'riderTrackingEnabled', 'phone', 'hotline', 'whatsapp', 'email', 'website', 'supportEmail', 'socialFacebook', 'socialInstagram', 'socialYoutube', 'socialTiktok', 'socialX'];
+    const values = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowed.includes(key)));
+    for (const key of ['minimumOrder', 'deliveryFee', 'freeDeliveryThreshold', 'taxRate']) {
+      if (key in values && (typeof values[key] !== 'number' || !Number.isFinite(values[key]) || (values[key] as number) < 0)) return res.status(400).json({ success: false, error: { message: 'Invalid numeric setting' } });
+    }
     const settings = await prisma.tenantSettings.upsert({
       where: { tenantId: id },
-      update: req.body,
-      create: { tenantId: id, ...req.body },
+      update: values,
+      create: { tenantId: id, ...values },
     });
 
     res.json({

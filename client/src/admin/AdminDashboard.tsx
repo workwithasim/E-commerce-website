@@ -16,7 +16,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onLogout,
   authUser,
 }) => {
-  const { tenant, branding, refreshTenant } = useTenant();
+  const { tenant, branding, settings, refreshTenant } = useTenant();
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'branding' | 'branches' | 'analytics'>('orders');
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -88,7 +88,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   useEffect(() => {
     loadData();
 
-    socket.emit('join:kitchen', { tenantId: tenant?.id });
+    socket.on('connect', loadData);
 
     socket.on('order:new', (newOrder: Order) => {
       setOrders((prev) => [newOrder, ...prev.filter((o) => o.id !== newOrder.id)]);
@@ -96,11 +96,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     });
 
     socket.on('order:status_updated', (updated: Order) => {
-      setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+      setOrders((prev) => prev.map((o) => (o.id === updated.id ? { ...o, ...updated } : o)));
       api.getStats().then(setStats).catch(() => {});
     });
 
     return () => {
+      socket.off('connect', loadData);
       socket.off('order:new');
       socket.off('order:status_updated');
     };
@@ -109,7 +110,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleUpdateStatus = async (id: string, status: string) => {
     try {
       const updated = await api.updateOrderStatus(id, status);
-      setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+      setOrders((prev) => prev.map((o) => (o.id === updated.id ? { ...o, ...updated } : o)));
     } catch (err: any) {
       alert(`Status update failed: ${err.message}`);
     }
@@ -308,7 +309,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {['ALL', 'PENDING', 'PREPARING', 'READY', 'RIDER_ASSIGNED', 'ON_THE_WAY', 'DELIVERED'].map((st) => (
+                {['ALL', 'PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'RIDER_ASSIGNED', 'ON_THE_WAY', 'DELIVERED', 'CANCELLED'].map((st) => (
                   <button
                     key={st}
                     onClick={() => setOrderFilter(st)}
@@ -385,12 +386,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <span>
                           {it.quantity}x {it.productName}
                         </span>
-                        <span style={{ fontWeight: 600 }}>Rs. {it.totalPrice || it.unitPrice * it.quantity}</span>
+                        <span style={{ fontWeight: 600 }}>{settings?.currencySymbol} {it.totalPrice || it.unitPrice * it.quantity}</span>
                       </div>
                     ))}
                     <div style={{ borderTop: '1px solid #F1F5F9', marginTop: '6px', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
                       <span>Total</span>
-                      <span style={{ color: 'var(--color-primary, #E32726)' }}>Rs. {order.total}</span>
+                      <span style={{ color: 'var(--color-primary, #E32726)' }}>{settings?.currencySymbol} {order.total}</span>
                     </div>
                   </div>
 
@@ -404,19 +405,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   {/* Order Controls */}
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                     <button
-                      onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
+                      disabled={!['PENDING', 'CONFIRMED'].includes(order.status)} onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
                       style={{ padding: '6px 10px', borderRadius: '6px', background: '#FEF3C7', color: '#B45309', border: 'none', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}
                     >
                       Baking
                     </button>
                     <button
-                      onClick={() => handleUpdateStatus(order.id, 'READY')}
+                      disabled={order.status !== 'PREPARING'} onClick={() => handleUpdateStatus(order.id, 'READY')}
                       style={{ padding: '6px 10px', borderRadius: '6px', background: '#DCFCE7', color: '#15803D', border: 'none', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}
                     >
                       Ready
                     </button>
                     <button
                       onClick={() => {
+                        if (order.status !== 'READY' || order.orderMode !== 'DELIVERY') return;
                         setAssigningOrder(order);
                         setSelectedRiderId(riders[0]?.id || '');
                       }}
@@ -425,7 +427,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       Assign Rider
                     </button>
                     <button
-                      onClick={() => handleUpdateStatus(order.id, 'DELIVERED')}
+                      disabled={order.status !== 'READY' || order.orderMode === 'DELIVERY'} onClick={() => handleUpdateStatus(order.id, 'DELIVERED')}
                       style={{ padding: '6px 10px', borderRadius: '6px', background: '#0F172A', color: '#FFFFFF', border: 'none', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}
                     >
                       Delivered
@@ -488,7 +490,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </td>
                       <td style={{ padding: '12px 16px', color: '#64748B' }}>{p.category?.name || 'Uncategorized'}</td>
                       <td style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--color-primary, #E32726)' }}>
-                        Rs. {p.basePrice ?? p.price}
+                        {settings?.currencySymbol} {p.basePrice ?? p.price}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         {p.optionGroups && p.optionGroups.length > 0 ? (
@@ -686,7 +688,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <div style={{ background: '#FFFFFF', padding: '20px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
                 <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748B' }}>TOTAL REVENUE</div>
                 <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--color-primary, #E32726)', marginTop: '4px' }}>
-                  Rs. {stats?.totalRevenue?.toLocaleString() ?? 0}
+                  {settings?.currencySymbol} {stats?.totalRevenue?.toLocaleString() ?? 0}
                 </div>
               </div>
               <div style={{ background: '#FFFFFF', padding: '20px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
@@ -772,7 +774,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '4px' }}>Base Price (Rs.)</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '4px' }}>Base Price ({settings?.currencySymbol})</label>
                   <input
                     type="number"
                     value={newProduct.basePrice}

@@ -73,9 +73,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     setPassword(demoPass);
     setMode('login');
     setError('');
-    if (tenantToSwitch) {
-      switchTenant(tenantToSwitch);
-    }
+
   };
 
   const brandName = tenant?.name || 'Restaurant Platform';
@@ -122,7 +120,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             {brandName.toUpperCase()}
           </h1>
           <p style={{ color: '#94A3B8', fontSize: '0.85rem', margin: '6px 0 0' }}>
-            White-Label Restaurant SaaS Platform
+            Order from your restaurant
           </p>
         </div>
 
@@ -316,6 +314,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </button>
           </form>
 
+          {import.meta.env.DEV && <>
           {/* Quick Demo Login Grid for both Tenants and Super Admin */}
           <div style={{ marginTop: '24px', borderTop: '1px solid #E2E8F0', paddingTop: '20px' }}>
             <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 10px', textAlign: 'center' }}>
@@ -408,6 +407,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               </div>
             </div>
           </div>
+          </>}
         </div>
       </div>
     </div>

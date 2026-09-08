@@ -15,13 +15,12 @@ export async function tenantResolver(req: Request, res: Response, next: NextFunc
       }
     }
 
-    // 3. Fallback to default tenant (cheezious)
-    if (!slug && !id) {
-      slug = 'cheezious';
-    }
+    // Optional deployment default; otherwise select the first configured active tenant.
+    if (!slug && !id) slug = process.env.DEFAULT_TENANT_SLUG || '';
 
     const tenant = await prisma.tenant.findFirst({
-      where: id ? { id } : { slug: slug.toLowerCase() },
+      where: id ? { id } : slug ? { slug: slug.toLowerCase() } : { status: 'ACTIVE' },
+      orderBy: { name: 'asc' },
       include: {
         branding: true,
         settings: true,

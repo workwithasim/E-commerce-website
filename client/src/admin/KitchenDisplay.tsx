@@ -46,7 +46,7 @@ export const KitchenDisplay: React.FC<{ onLogout?: () => void; onClose?: () => v
   useEffect(() => {
     loadKitchenOrders();
 
-    socket.emit('join:kitchen', { tenantId: tenant?.id });
+    socket.on('connect', loadKitchenOrders);
 
     socket.on('order:new', (newOrder: Order) => {
       setOrders((prev) => [newOrder, ...prev.filter((o) => o.id !== newOrder.id)]);
@@ -62,6 +62,7 @@ export const KitchenDisplay: React.FC<{ onLogout?: () => void; onClose?: () => v
     });
 
     return () => {
+      socket.off('connect', loadKitchenOrders);
       socket.off('order:new');
       socket.off('order:status_updated');
     };
@@ -367,9 +368,9 @@ export const KitchenDisplay: React.FC<{ onLogout?: () => void; onClose?: () => v
                       </button>
                     )}
 
-                    {isReady && (
+                    {isReady && order.orderMode !== 'DELIVERY' && order.status === 'READY' && (
                       <button
-                        onClick={() => updateStatus(order.id, 'ON_THE_WAY')}
+                        onClick={() => updateStatus(order.id, 'DELIVERED')}
                         style={{
                           padding: '10px',
                           backgroundColor: '#3B82F6',
@@ -381,7 +382,7 @@ export const KitchenDisplay: React.FC<{ onLogout?: () => void; onClose?: () => v
                           cursor: 'pointer',
                         }}
                       >
-                        🛵 Handed to Rider / Dispatched
+                        ✓ Collected by Customer
                       </button>
                     )}
                   </div>

@@ -1,3 +1,4 @@
+import { API_URL, reconnectSocket, getActiveTenantSlug } from '../api';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Tenant, TenantBranding, TenantSettings } from '../types';
 
@@ -10,6 +11,7 @@ interface TenantContextType {
   switchTenant: (slug: string) => void;
   refreshTenant: () => Promise<void>;
   loading: boolean;
+  error: string;
 }
 
 const defaultBranding: TenantBranding = {
@@ -20,7 +22,7 @@ const defaultBranding: TenantBranding = {
   surfaceColor: '#FFFDF0',
   textColor: '#1A1A1A',
   mutedTextColor: '#71717A',
-  logo: 'https://images.deliveryhero.io/image/fd-pk/LH/w3ws-listing.jpg',
+  logo: '',
   buttonRadius: '8px',
   cardRadius: '14px',
 };
@@ -31,8 +33,8 @@ const defaultSettings: TenantSettings = {
   minimumOrder: 500,
   deliveryFee: 100,
   freeDeliveryThreshold: 2000,
-  hotline: '051-111-44-66-99',
-  whatsapp: '+923001234567',
+  hotline: '',
+  whatsapp: '',
   deliveryEnabled: true,
   takeawayEnabled: true,
   riderTrackingEnabled: true,
@@ -43,24 +45,19 @@ const TenantContext = createContext<TenantContextType>({
   branding: defaultBranding,
   settings: defaultSettings,
   allTenants: [],
-  currentSlug: 'cheezious',
+  currentSlug: '',
   switchTenant: () => {},
   refreshTenant: async () => {},
-  loading: true,
+  loading: true, error: '',
 });
 
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentSlug, setCurrentSlug] = useState<string>(() => {
-    // Check URL query ?tenant=slug or localStorage or default to cheezious
-    const params = new URLSearchParams(window.location.search);
-    const fromUrl = params.get('tenant');
-    if (fromUrl) return fromUrl.toLowerCase();
-    return localStorage.getItem('platform_tenant_slug') || 'cheezious';
-  });
+  const [currentSlug, setCurrentSlug] = useState<string>(getActiveTenantSlug);
 
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [allTenants, setAllTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   // Apply CSS custom properties dynamically to :root
   const applyTheme = (branding: TenantBranding) => {
@@ -75,6 +72,8 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     root.style.setProperty('--radius-btn', branding.buttonRadius || '8px');
     root.style.setProperty('--radius-card', branding.cardRadius || '14px');
 
+    root.style.setProperty('--font-heading', branding.headingFont || 'Inter, sans-serif');
+    root.style.setProperty('--font-body', branding.bodyFont || 'Inter, sans-serif');
     // Also update favicon and page title
     if (branding.logo) {
       const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
@@ -84,31 +83,42 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const fetchTenantData = async (slug: string) => {
     setLoading(true);
+    setError('');
+    setTenant(null);
     try {
+      if (!slug) {
+        const response = await fetch(`${API_URL}/api/v1/tenants`);
+        const available = await response.json();
+        const first = available.data?.[0];
+        if (!first) throw new Error('No active restaurant is configured');
+        slug = first.slug;
+        localStorage.setItem('platform_tenant_slug', slug);
+        // Resolve the initial restaurant before mounting the storefront.
+      }
       // 1. Fetch public tenant data
-      const res = await fetch(`http://localhost:5000/api/v1/tenants/${slug}/public`, {
+      const res = await fetch(`${API_URL}/api/v1/tenants/${encodeURIComponent(slug)}/public`, {
         headers: { 'x-tenant-slug': slug },
       });
       const json = await res.json();
 
       if (json.success && json.data) {
         setTenant(json.data);
+        if (currentSlug !== slug) setCurrentSlug(slug);
         const branding = json.data.branding || defaultBranding;
         applyTheme(branding);
         document.title = `${json.data.name} | Food Ordering Platform`;
       } else {
-        // Fallback default
-        applyTheme(defaultBranding);
+        throw new Error(json.error?.message || 'Restaurant unavailable');
       }
 
       // 2. Fetch list of all active tenants (for the tenant switcher bar)
-      const listRes = await fetch('http://localhost:5000/api/v1/tenants');
+      const listRes = await fetch(`${API_URL}/api/v1/tenants`);
       const listJson = await listRes.json();
       if (listJson.success && Array.isArray(listJson.data)) {
         setAllTenants(listJson.data);
       }
     } catch (err) {
-      console.warn('Tenant load fallback to defaults:', err);
+      setError(err instanceof Error ? err.message : 'Unable to load restaurant');
       applyTheme(defaultBranding);
     } finally {
       setLoading(false);
@@ -117,9 +127,19 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   useEffect(() => {
     fetchTenantData(currentSlug);
+    reconnectSocket();
   }, [currentSlug]);
 
   const switchTenant = (slug: string) => {
+    if (slug === currentSlug) return;
+    const saved = localStorage.getItem('platform_auth_user');
+    let user: any = null;
+    try { user = saved ? JSON.parse(saved) : null; } catch { /* Invalid saved session is discarded on verification. */ }
+    if (user && user.role !== 'SUPER_ADMIN' && user.tenantSlug !== slug) {
+      localStorage.removeItem('platform_auth_token');
+      localStorage.removeItem('platform_auth_user');
+      window.dispatchEvent(new Event('platform:logout'));
+    }
     localStorage.setItem('platform_tenant_slug', slug);
     setCurrentSlug(slug);
     const url = new URL(window.location.href);
@@ -144,7 +164,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         currentSlug,
         switchTenant,
         refreshTenant,
-        loading,
+        loading, error,
       }}
     >
       {children}

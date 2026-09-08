@@ -4,11 +4,8 @@ import { useTenant } from '../theme/ThemeProvider';
 export const TenantSwitcher: React.FC<{ onOpenSuperAdmin?: () => void }> = ({ onOpenSuperAdmin }) => {
   const { tenant, currentSlug, switchTenant, allTenants } = useTenant();
 
-  // If only 1 tenant loaded, default fallback to the two seeded brands
-  const brands = allTenants.length > 0 ? allTenants : [
-    { id: '1', name: 'Cheezious', slug: 'cheezious' },
-    { id: '2', name: 'Savour Foods', slug: 'savour-foods' },
-  ];
+  const brands = allTenants;
+  if (!import.meta.env.DEV && !onOpenSuperAdmin) return null;
 
   return (
     <div
@@ -60,7 +57,7 @@ export const TenantSwitcher: React.FC<{ onOpenSuperAdmin?: () => void }> = ({ on
         <span style={{ color: '#64748B', fontSize: '12px' }}>Switch Brand:</span>
         {brands.map((b) => {
           const isSelected = currentSlug.toLowerCase() === b.slug.toLowerCase();
-          const isCheezious = b.slug.includes('cheezious');
+
           return (
             <button
               key={b.slug}
@@ -80,7 +77,7 @@ export const TenantSwitcher: React.FC<{ onOpenSuperAdmin?: () => void }> = ({ on
                 gap: '5px',
               }}
             >
-              <span>{isCheezious ? '🍕' : '🍗'}</span>
+              <span>●</span>
               <span>{b.name}</span>
               {isSelected && <span style={{ fontSize: '10px' }}>✓</span>}
             </button>

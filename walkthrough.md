@@ -1,33 +1,25 @@
-# 🍕 Walkthrough - 100% Exact Cheezious Clone Alignment
+# Verification walkthrough
 
-## 🔍 Differences Identified & Resolved
+## Completed automated checks
 
-We performed a pixel-by-pixel inspection between the official [cheezious.com](https://cheezious.com/) and our full-stack implementation based on the screenshots:
+- Frontend production build and backend TypeScript build.
+- 13 regression tests: authoritative pricing, required/foreign/duplicate options, invalid quantities, missing branches, unsupported order modes, delivery discounts, voucher expiry/minimums, status transitions, anonymous access, tenant mismatch, customer ownership, rider ownership, branch scope, and Socket.IO room isolation.
+- Database-backed verification using a temporary tenant: signed-in checkout with options, percentage voucher and tax; kitchen preparation; rider assignment and acceptance; pickup; on-the-way; location update; delivery; status history; password-field exclusion; separate-customer and cross-tenant rejection.
+- Backend startup and PostgreSQL health.
 
-| # | Element | Live cheezious.com | Previous Localhost | Status & Fix |
-|---|---|---|---|---|
-| 1 | **Header Announcement Bar** | No top announcement bar (clean white directly under browser) | Had red promo bar (`SPECIAL OFFER ...`) | **Fixed:** Removed top announcement bar to match live site |
-| 2 | **Header Navigation** | Red hamburger menu (`☰`) on far left; no inline text links | Had inline text links (`Menu`, `Deals & Offers`, `Kitchen Feed`) | **Fixed:** Converted to red 3-bar hamburger drawer menu containing all navigation links |
-| 3 | **Official Logo** | Official horizontal brand logo (`mainLogo.png`: mascot + chocolate-brown bold `Cheezious®` typography) | Emblem-only or vertically stacked logo | **Fixed:** Extracted and rendered authentic `mainLogo.png` directly from Next.js bundle |
-| 4 | **Order Mode Switcher** | Segmented capsule with `#FEDC00` yellow `DELIVERY` + grey `PICK-UP` with authentic SVG icons | Colored buttons with emoji | **Fixed:** Authentic SVG icons (`pin.1d35bccd.svg`, `store.a7543dfa.svg`), `#FEDC00` capsule styling |
-| 5 | **Search Capsule** | Rounded pill with grey magnifying glass and placeholder `"Find in cheezious"` | Basic input with emoji | **Fixed:** Authentic `search.1d0c08c7.svg` icon, 12px border radius, `#F5F5F5` background |
-| 6 | **Delivery Address** | Capsule with location arrow icon and chevron `>` | Dropdown text with emoji | **Fixed:** Authentic `location.011c956f.svg` + `arrow.d9b04780.svg` |
-| 7 | **Cart & Login Buttons** | Yellow pill buttons (`#FEDC00`) with bold black text `CART` & `LOGIN`, red circular badge `0` | Red `Rs. 0` button and generic login | **Fixed:** Authentic `cart.59a90757.svg` + `user.5fb6c6b7.svg` with yellow `#FEDC00` capsule styling |
-| 8 | **Hero Banner** | Full width promotional banner (defaulting to yellow "THIN & CRISPY!" or "NOW OPEN G-15") | Orange banner with container margins | **Fixed:** Full-width edge-to-edge carousel featuring authentic "THIN & CRISPY!" and "G-15" banners |
-| 9 | **Banner Bottom Strip** | Solid red strip (`#E32726`) spanning 100% width with white carousel pagination dots | Inset dots without full red bar | **Fixed:** 100% full-width `#E32726` strip with active white pill and circular dots |
-| 10 | **Order Now Button** | Red rounded button (`ORDER NOW`) positioned under the banner strip on the right | Placed in hero text overlay | **Fixed:** Positioned on the right right under the red banner strip |
-| 11 | **Explore Menu Header** | Bold black title `Explore Menu` on left, uppercase red `VIEW ALL` on right | Text with item count badge | **Fixed:** Exact font weights, sizes, and layout matching live site |
-| 12 | **Category Cards Carousel** | 4 large square cards (`THIN CRUST PIZZA`, `MALAI TIKKA`, `BEEF PEPPERONI PIZZA`, `STARTERS`) with authentic platter imagery and `<` / `>` circular arrows | Small text tags | **Fixed:** Added authentic 4-card carousel with authentic Cheezious S3 category images and smooth scroll buttons |
+## Manual browser checks still pending
 
----
+No browser was connected to the automation runtime. These are checks to perform, not claimed results.
 
-## 📸 Verification Screenshots
+1. Open the React application on port 5173. Verify menu cards, categories, banners, and prices on desktop and a narrow mobile viewport.
+2. Add an item with required options. Open the cart, change quantities, and check the signed-in server quote. Apply a valid and invalid voucher.
+3. Submit a COD delivery order. Confirm the order number, total, and history. Place a pickup order and confirm no delivery fee.
+4. Switch restaurants. Verify branding/content changes, separate carts and branches, and sign-out for a user belonging to another tenant.
+5. Log in as kitchen staff assigned to the selected branch. Move the order from pending to preparing to ready. Other branches must not appear.
+6. As tenant admin, assign an available rider to the ready delivery.
+7. As that rider, accept, pick up, and start delivery. Enable location sharing and approve device permission. Confirm the customer sees incoming locations; stop sharing and confirm updates stop.
+8. Mark delivered. Confirm order and delivery statuses agree and the customer history includes the transition.
+9. Sign in as another customer. Confirm the previous customer's order is inaccessible.
+10. Check keyboard navigation, dialog dismissal, mobile controls, and location-permission denial.
 
-- **Header, Yellow Banner & Red Strip:** Verified via browser subagent at `top_area_yellow_banner_final_1788890310935.png`
-- **Explore Menu Category Carousel:** Verified via browser subagent at `explore_menu_categories_1788890435004.png`
-
----
-
-## 🔗 GitHub Synchronization
-All code changes and assets pushed to:
-`git@github.com:workwithasim/E-commerce-website.git` (Commit: `44803f9`).
+Use separate browser profiles for customer, kitchen, and rider sessions. The demo seed grants kitchen staff an explicit branch membership; orders from another branch belong to that branch's staff.

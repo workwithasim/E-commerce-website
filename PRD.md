@@ -46,3 +46,23 @@ Platform
 ```
 
 Every tenant must have isolated business data and configurable branding.
+
+# 3. IMPLEMENTATION STATUS
+
+The current milestone repairs the existing web implementation. Progress and test evidence are tracked in [IMPLEMENTATION.md](IMPLEMENTATION.md); setup is documented in [readmeimportant.md](readmeimportant.md).
+
+Implemented in the web platform:
+
+- Tenant-specific storefront content, branding, carts, and branches.
+- Authenticated customer ordering/history and server-calculated quotes with validated product options.
+- Tenant/customer/rider/branch authorization and private order subscriptions.
+- Kitchen workflow, rider assignments, saved availability, browser geolocation publishing, customer location display, and synchronized order/delivery statuses.
+- Order-lifecycle audit entries, basic administration, and revenue grouped by currency.
+
+Current product decisions:
+
+- Browsing/cart use is anonymous; checkout and tracking require sign-in.
+- COD is supported. Online payment options are not advertised until provider integration exists.
+- Native applications remain outside this web repair milestone.
+
+Not yet complete: native Android/iOS apps, online payments/refunds, production deployment/migrations, refresh-token lifecycle, voucher redemption limits, complete audit coverage, comprehensive settings/menu-option administration, and advanced analytics. Visual browser and device-location verification is pending; automated API/database checks do not substitute for it.

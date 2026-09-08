@@ -1,61 +1,32 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# WHITE-LABEL MULTI-TENANT RESTAURANT SAAS PLATFORM (No-Docker Local Launch)
-# ==============================================================================
-
-set -e
-
-# 1. Resolve Node.js from NVM or environment
+set -euo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 if [ -d "$HOME/.nvm/versions/node/v24.14.0/bin" ]; then
   export PATH="$HOME/.nvm/versions/node/v24.14.0/bin:$PATH"
 fi
-
-echo "🚀 =================================================================="
-echo "🚀  WHITE-LABEL MULTI-TENANT RESTAURANT PLATFORM (PERN + WebSockets)"
-echo "🚀 =================================================================="
-echo "Node: $(node -v) | npm: $(npm -v)"
-
-# 2. Verify Database Connection
-echo "📦 Checking PostgreSQL Database connection..."
-cd server
-if [ ! -d "node_modules" ]; then
-  npm install
+if ! command -v node >/dev/null || ! command -v npm >/dev/null; then
+  echo "Install Node.js and npm before starting the application." >&2
+  exit 1
 fi
-
-echo "🔄 Generating Prisma Client..."
-npm run db:generate
-
-# Start Backend Server
-echo "🚀 Starting Express + TypeScript Multi-Tenant Backend on http://localhost:5000..."
-npm run dev &
-BACKEND_PID=$!
-cd ..
-
-# 3. Start Frontend Client
-echo "🚀 Starting React + Vite White-Label Frontend on http://localhost:5173..."
-cd client
-if [ ! -d "node_modules" ]; then
-  npm install
+if [ ! -f server/.env ]; then
+  echo "Configure server/.env from server/.env.example first. See readmeimportant.md." >&2
+  exit 1
 fi
-npx vite --port 5173 --host &
-FRONTEND_PID=$!
-cd ..
-
-echo ""
-echo "🎉 =================================================================="
-echo "🎉  RESTAURANT PLATFORM IS LIVE & RUNNING!"
-echo "🎉 =================================================================="
-echo "👉 Customer Storefront:      http://localhost:5173/"
-echo "👉 Unified Login Portal:     http://localhost:5173/ (1-Click Demo Login)"
-echo "👉 Backend REST API:         http://localhost:5000/api/health"
-echo "👉 Multi-Tenant API V1:      http://localhost:5000/api/v1/tenants"
-echo "=================================================================="
-echo "Available Demo Roles:"
-echo "👑 Super Admin:   superadmin@platform.com  | SuperAdmin@123"
-echo "🍕 Cheezious:     admin@cheezious.com      | Admin@123"
-echo "🍗 Savour Foods:  admin@savour.com         | Admin@123"
-echo "=================================================================="
-echo "Press Ctrl+C to stop all servers."
-
-trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null || true; exit" SIGINT SIGTERM
-wait
+backend_pid=''
+frontend_pid=''
+cleanup() {
+  if [ -n "$backend_pid" ]; then kill "$backend_pid" 2>/dev/null || true; fi
+  if [ -n "$frontend_pid" ]; then kill "$frontend_pid" 2>/dev/null || true; fi
+}
+trap cleanup EXIT
+trap 'exit 0' INT TERM
+if [ ! -d server/node_modules ]; then npm --prefix server ci; fi
+if [ ! -d client/node_modules ]; then npm --prefix client ci; fi
+npm --prefix server run db:generate
+npm --prefix server run dev &
+backend_pid=$!
+npm --prefix client run dev &
+frontend_pid=$!
+echo "Starting storefront at http://localhost:5173 and API at http://localhost:5000."
+echo "Use the API health endpoint to confirm database connectivity. Ctrl+C stops the servers."
+wait -n "$backend_pid" "$frontend_pid"

@@ -1,10 +1,12 @@
+import 'dotenv/config';
+import { randomBytes } from 'crypto';
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { UserRole } from '@prisma/client';
 import { prisma } from '../prisma';
 
-export const JWT_SECRET = process.env.JWT_SECRET || 'restaurant_platform_jwt_secret_key_2026';
-export const REFRESH_SECRET = process.env.REFRESH_SECRET || 'restaurant_platform_refresh_secret_key_2026';
+export const JWT_SECRET = process.env.JWT_SECRET || randomBytes(48).toString('hex');
+export const REFRESH_SECRET = process.env.REFRESH_SECRET || randomBytes(48).toString('hex');
 
 export interface TokenPayload {
   userId: string;
@@ -45,6 +47,10 @@ export async function authenticateJWT(req: Request, res: Response, next: NextFun
       });
     }
 
+    if (user.tenantId) {
+      const tenant = await prisma.tenant.findUnique({ where: { id: user.tenantId } });
+      if (tenant?.status !== 'ACTIVE') return res.status(403).json({ success: false, error: { message: 'Restaurant is inactive' } });
+    }
     req.user = user;
     next();
   } catch (err) {

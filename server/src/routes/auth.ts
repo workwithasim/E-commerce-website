@@ -11,6 +11,8 @@ const router = Router();
 router.post('/register', async (req: Request, res: Response) => {
   try {
     const { name, email, password, phone } = req.body;
+    if (req.tenant?.settings?.customerRegistrationEnabled === false) return res.status(403).json({ success: false, error: { message: 'Registration is disabled' } });
+    if (typeof password !== 'string' || password.length < 8 || typeof email !== 'string' || !email.includes('@')) return res.status(400).json({ success: false, error: { message: 'Valid email and password of at least 8 characters are required' } });
     const tenantId = req.tenant?.id;
 
     if (!name || !email || !password) {
@@ -57,6 +59,7 @@ router.post('/register', async (req: Request, res: Response) => {
           role: user.role,
           phone: user.phone,
           tenantId: user.tenantId,
+          tenantSlug: req.tenant?.slug,
         },
       },
     });
@@ -93,6 +96,7 @@ router.post('/login', async (req: Request, res: Response) => {
       });
     }
 
+    if (user.tenant && user.tenant.status !== 'ACTIVE') return res.status(403).json({ success: false, error: { message: 'Restaurant is inactive' } });
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
       return res.status(401).json({

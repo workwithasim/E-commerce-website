@@ -19,21 +19,26 @@ export const API_URL =
     ? 'http://localhost:5000'
     : '');
 
-export const socket = io(API_URL || undefined);
+export const socket = io(API_URL || undefined, { autoConnect: false });
+export function reconnectSocket() {
+  socket.disconnect();
+  socket.auth = { token: getToken(), tenantSlug: getActiveTenantSlug() };
+  socket.connect();
+}
 
 // ── Multi-Tenant Slug Helper ─────────────────────────────────────────
 export const getActiveTenantSlug = (): string => {
-  if (typeof window === 'undefined') return 'cheezious';
+  if (typeof window === 'undefined') return import.meta.env.VITE_DEFAULT_TENANT_SLUG || '';
   const params = new URLSearchParams(window.location.search);
   const fromUrl = params.get('tenant');
   if (fromUrl) return fromUrl.toLowerCase();
-  return localStorage.getItem('platform_tenant_slug') || 'cheezious';
+  return localStorage.getItem('platform_tenant_slug') || import.meta.env.VITE_DEFAULT_TENANT_SLUG || '';
 };
 
 // ── JWT Token Helpers ────────────────────────────────────────────────
 export const getToken = (): string | null => localStorage.getItem('platform_auth_token');
-export const setToken = (token: string) => localStorage.setItem('platform_auth_token', token);
-export const removeToken = () => localStorage.removeItem('platform_auth_token');
+export const setToken = (token: string) => { localStorage.setItem('platform_auth_token', token); reconnectSocket(); };
+export const removeToken = () => { localStorage.removeItem('platform_auth_token'); reconnectSocket(); };
 
 export const getHeaders = () => {
   const token = getToken();
@@ -51,6 +56,7 @@ export const getHeaders = () => {
 // Standard response unpacker helper
 async function handleResponse<T>(res: Response): Promise<T> {
   const json = await res.json();
+  if (!res.ok) throw new Error(json.error?.message || 'Request failed');
   if (json.success !== undefined) {
     if (!json.success) {
       throw new Error(json.error?.message || 'API request failed');
@@ -232,6 +238,12 @@ export const api = {
     return handleResponse<Branch>(res);
   },
 
+  async quoteOrder(payload: any): Promise<any> {
+    return handleResponse(await fetch(`${API_URL}/api/v1/orders/quote`, { method: 'POST', headers: getHeaders(), body: JSON.stringify(payload) }));
+  },
+  async setRiderAvailability(isAvailable: boolean): Promise<Rider> {
+    return handleResponse(await fetch(`${API_URL}/api/v1/deliveries/riders/availability`, { method: 'PATCH', headers: getHeaders(), body: JSON.stringify({ isAvailable }) }));
+  },
   // ── Orders ────────────────────────────────────────────────────────
   async createOrder(orderData: any): Promise<Order> {
     const res = await fetch(`${API_URL}/api/v1/orders`, {

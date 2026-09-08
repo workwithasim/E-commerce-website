@@ -41,6 +41,9 @@ export interface TenantSettings {
   deliveryEnabled?: boolean;
   takeawayEnabled?: boolean;
   riderTrackingEnabled?: boolean;
+  cashOnDeliveryEnabled?: boolean;
+  taxEnabled?: boolean;
+  taxRate?: number;
 }
 
 export interface Tenant {
@@ -213,6 +216,7 @@ export interface Rider {
 }
 
 export interface Delivery {
+  order?: Order;
   id: string;
   orderId: string;
   riderId?: string | null;

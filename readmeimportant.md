@@ -1,278 +1,64 @@
-# 🚀 WHITE-LABEL MULTI-TENANT RESTAURANT SAAS PLATFORM
+# Restaurant platform
 
-> **Specification:** [PRD.md](file:///home/a4asimkhalid/Desktop/chezzious%20website%20layout%20/PRD.md) (Master PRD v1.0.0)  
-> **Architecture Core:** *One Platform. One Codebase. Dynamic Branding. Strict Tenant Isolation. Server-Authoritative Pricing. Real-Time Operations.*  
-> **Tech Stack:** **PostgreSQL + Express.js + React.js + Node.js + TypeScript + WebSockets (Socket.io)**  
-> **Version:** 4.0.0 (Master White-Label Multi-Tenant Release — No Docker Required)
+React/Vite customer and staff web interfaces, Express/TypeScript REST API, PostgreSQL/Prisma persistence, and Socket.IO updates.
 
----
+`PRD.md` defines the product vision. `IMPLEMENTATION.md` records completed work and verification. `walkthrough.md` describes the current workflows and remaining manual checks.
 
-## 📑 TABLE OF CONTENTS
-1. [Platform Vision & Core Principles](#1-platform-vision--core-principles)
-2. [Multi-Tenant Architecture](#2-multi-tenant-architecture)
-3. [Dynamic Branding & Theming Engine](#3-dynamic-branding--theming-engine)
-4. [Authoritative Server-Side Pricing Engine](#4-authoritative-server-side-pricing-engine)
-5. [7 Role-Based Portals & Default Credentials](#5-7-role-based-portals--default-credentials)
-6. [Real-time Socket.io Room Architecture](#6-real-time-socketio-room-architecture)
-7. [PostgreSQL Multi-Tenant Database Schema](#7-postgresql-multi-tenant-database-schema)
-8. [API Endpoints Reference (V1)](#8-api-endpoints-reference-v1)
-9. [How to Launch Locally (No Docker)](#9-how-to-launch-locally-no-docker)
-10. [End-to-End Verification Walkthrough](#10-end-to-end-verification-walkthrough)
-11. [Git Changelog](#11-changelog)
+## Applications
 
----
+- `client/`: the maintained customer storefront, login, tenant admin, branch manager, kitchen, rider, and platform admin web views.
+- `server/`: API, authorization, pricing, operations, audit records, and database schema.
+- Root `index.html`, `js/`, and `css/`: historical standalone demo. Its checkout and tracking are simulated; it is not the maintained ordering application.
+- `data/`: seed catalog. Database records become the runtime source of truth after setup.
 
-## 1. PLATFORM VISION & CORE PRINCIPLES
+## Local setup
 
-This platform is a **configuration-driven SaaS platform**, not a single-brand clone. Cheezious is simply Tenant #1. Another tenant (such as **Savour Foods**) is Tenant #2.
+Use Node.js 20+ and PostgreSQL. Node 24.14.0 was used for verification.
 
-```
-                    PLATFORM (Super Admin)
-                              │
-                    TENANTS (Cheezious, Savour Foods, ...)
-                              │
-          ┌───────────────────┼───────────────────┐
-          ↓                   ↓                   ↓
-       BRANDING            SETTINGS          BUSINESS DATA
-    (Colors, Fonts,     (Currency, Tax,     (Products, Branches,
-     Logos, Radii)       Delivery Rules)      Orders, Customers)
-          │                   │                   │
-          └───────────────────┼───────────────────┘
-                              │
-                 ┌────────────┴────────────┐
-                 ↓                         ↓
-          REAL-TIME ENGINE          REST API ENGINE
-       (Socket.io Isolated       (Strict Tenant Isolation
-         Tenant & Branch          & Server-Authoritative
-             Rooms)                      Pricing)
-                 │                         │
-     ┌───────────┼───────────┬─────────────┼───────────┐
-     ↓           ↓           ↓             ↓           ↓
-  Customer     Kitchen     Rider        Tenant       Super
- Storefront      KDS     Dashboard       Admin       Admin
- (Dynamic      (Audio      (GPS         (Branding,  (Tenant
-  Theming)     Alerts)    Sim & Flow)    Menu, Ops)  Onboard)
-```
+1. Install dependencies with `npm ci` in both `client/` and `server/`.
+2. Copy `server/.env.example` to `server/.env` and configure `DATABASE_URL`, `CLIENT_ORIGIN`, and random `JWT_SECRET`/`REFRESH_SECRET` values. Environment files are ignored by Git. Without explicit signing secrets, development uses random process-local secrets and sessions expire when the server restarts.
+3. In `server/`, run `npm run db:generate` and `npm run db:push` for a local development database.
+4. For a new demo database, run `npm run db:seed`. The seed writes demo branding, menus, users, vouchers, and staff memberships. It replaces seeded option groups and banners; do not use it as a production migration.
+5. Run `./start.sh`, or run `npm run dev` separately in `server/` and `client/`.
 
-### Key Rules Enforced:
-- **Rule 1 — No Hardcoded Brands:** The codebase contains zero brand assumptions. Colors, slogans, logos, and menus are loaded dynamically.
-- **Rule 4 & 6 — Strict Tenant Isolation:** Every database model includes `tenantId`. Non-super-admin users cannot access data across tenants.
-- **Rule 5 — Server-Side Pricing Only:** Clients send item IDs and option IDs. The server authoritatively calculates unit prices, discounts, delivery fees, and grand totals.
+Customer application: `http://localhost:5173/?tenant=cheezious` or `?tenant=savour-foods`.
+API health: `http://localhost:5000/api/health`.
 
----
+The tenant switcher and preset demo login buttons are development conveniences. Production deployments should select a tenant using the URL/configuration. Demo credentials must not be deployed to production.
 
-## 2. MULTI-TENANT ARCHITECTURE
+For an existing database, staff need explicit `BranchStaff` memberships. Kitchen and branch-manager authorization does not grant tenant-wide access by default. The local seed assigns its demonstration staff to the first branch alphabetically.
 
-The platform comes pre-seeded with two full production-grade restaurant brands:
+## Current workflows
 
-| Feature | 🍕 Cheezious (Tenant 1) | 🍗 Savour Foods (Tenant 2) |
-|---|---|---|
-| **Slug** | `cheezious` | `savour-foods` |
-| **Primary Color** | `#D80032` (Crimson Red) | `#0B6E4F` (Emerald Forest Green) |
-| **Secondary Color** | `#FFE600` (Cheezy Gold) | `#D4AF37` (Royal Gold) |
-| **Catalog** | 36 Categories, 129 Authentic Products | Traditional Pulao, Roasts, Zarda Kheer |
-| **Customizer Engine** | Pizza Sizes, Crusts, Toppings | Portion Sizes (Single/Double), Piece Types, Kababs |
-| **Branches** | 61 Nationwide Branches | Blue Area, Gordon College Rd, Peshawar Rd |
-| **Vouchers** | `CHEEZY10`, `WELCOME50`, `SUPERCHEESE` | `SAVOUR10` |
+- Browse menus without signing in; carts and selected branches persist separately for each tenant.
+- Sign in to request a quote, place an order, view personal history, and track an order. Switching tenants signs out non-platform users.
+- Product options use database IDs and selection constraints. The server calculates the subtotal, discount, tax, delivery fee, and total. Client-supplied prices are ignored.
+- Delivery and pickup use `DELIVERY` and `TAKEAWAY`. COD is the currently implemented payment method. Disabled modes are rejected.
+- Kitchen staff handle their assigned branches. Delivery orders proceed through rider assignment and delivery actions; pickup orders can be marked collected when ready.
+- Riders receive only their own assignments, save availability, and explicitly enable browser geolocation. Sharing requires a secure browser context (HTTPS or localhost), device permission, and an active delivery. Customers see incoming coordinates on an OpenStreetMap embed.
+- Admins manage products, stock, branch opening status, branding, rider dispatch, and basic analytics. Platform revenue is grouped by currency.
 
----
+## Access and real-time behavior
 
-## 3. DYNAMIC BRANDING & THEMING ENGINE
+Protected order and delivery routes require JWT authentication and tenant ownership. Customer queries include customer ownership; rider queries include assignment ownership; branch staff queries include explicit branch memberships.
 
-The frontend uses **`ThemeProvider.tsx`** to dynamically inject CSS custom properties to `:root`:
+Socket connections authenticate with `{ token, tenantSlug }`. Anonymous clients receive only catalog events. Staff/rider rooms are selected by the server. `join:order` checks order ownership. There is no global kitchen room or unauthenticated location-publishing event. Order lifecycle actions write audit entries.
 
-```css
-:root {
-  --color-primary: [tenant.branding.primaryColor];
-  --color-secondary: [tenant.branding.secondaryColor];
-  --color-accent: [tenant.branding.accentColor];
-  --color-surface: [tenant.branding.surfaceColor];
-  --color-text: [tenant.branding.textColor];
-  --radius-btn: [tenant.branding.buttonRadius];
-  --radius-card: [tenant.branding.cardRadius];
-}
-```
+## Checks
 
-### 1-Click Brand Switcher:
-At the top of the screen in development/demo mode, click **🍕 Cheezious** or **🍗 Savour Foods** to watch the entire UI instantaneously rebrand its colors, logos, categories, products, and branches with zero reload.
+In `client/`: `npm run build`.
+In `server/`: `npm run build` and `npm test`.
 
----
+`npm test` runs isolated pricing/authorization/Socket.IO regression checks using database doubles and local HTTP sockets. Both projects' dependencies must be installed.
 
-## 4. AUTHORITATIVE SERVER-SIDE PRICING ENGINE
+With the backend running on port 5000 and the configured local database available, run `npm run test:integration` in `server/`. It creates a temporary tenant, exercises checkout and delivery through HTTP, and removes its temporary business data and audit records in cleanup.
 
-Located at `server/src/services/pricing.ts`:
-1. Client sends:
-   ```json
-   {
-     "items": [
-       { "productId": "prod_1", "quantity": 2, "optionIds": ["opt_size_large", "opt_crust_cheese"] }
-     ],
-     "branchId": "branch_1",
-     "orderMode": "DELIVERY",
-     "voucherCode": "CHEEZY10"
-   }
-   ```
-2. The server queries PostgreSQL for base price and option modifiers.
-3. Server authoritatively computes subtotal, verifies voucher rules and minimum order thresholds, applies branch-specific delivery fee, and computes total.
-4. Client-sent totals are strictly ignored to prevent tampering.
+Backend production entry: `npm start` runs `dist/src/index.js` after a build.
+Set `VITE_DEFAULT_TENANT_SLUG` and `DEFAULT_TENANT_SLUG` to choose a deployment default; otherwise the first active restaurant is used.
+Set `VITE_API_URL` when the frontend and backend are on different origins. Configure `CLIENT_ORIGIN` to the actual frontend origin.
 
----
+## Remaining product scope
 
-## 5. 7 ROLE-BASED PORTALS & DEFAULT CREDENTIALS
+The PRD is a vision document, not a completed production checklist. Native Android/iOS apps, payment-provider processing/refunds, production migrations and deployment, session refresh/revocation, voucher redemption limits, comprehensive audit coverage, full menu-option/settings editors, and advanced analytics remain future work.
 
-All roles log in from a single unified login page (`LoginPage.tsx`) with 1-click demo buttons:
-
-| Role | Email | Password | Tenant | Portal View |
-|---|---|---|---|---|
-| **👑 Super Admin** | `superadmin@platform.com` | `SuperAdmin@123` | Platform | Super Admin Dashboard (1-Click Onboarder) |
-| **⚡ Cheezious Admin** | `admin@cheezious.com` | `Admin@123` | Cheezious | Visual Branding, Menu Builder, Orders |
-| **👨‍🍳 Cheezious Kitchen** | `kitchen@cheezious.com` | `Kitchen@123` | Cheezious | Kitchen Display System with Audio Alert |
-| **🛵 Cheezious Rider** | `rider@cheezious.com` | `Rider@123` | Cheezious | Rider Portal with Live GPS Broadcaster |
-| **🛒 Cheezious Customer** | `customer@cheezious.com` | `Customer@123` | Cheezious | Cheezious Red/Yellow Customer Storefront |
-| **⚡ Savour Admin** | `admin@savour.com` | `Admin@123` | Savour Foods | Savour Branding, Pulao Menu Builder |
-| **👨‍🍳 Savour Kitchen** | `kitchen@savour.com` | `Kitchen@123` | Savour Foods | Savour Kitchen Queue with Beeps |
-| **🛵 Savour Rider** | `rider@savour.com` | `Rider@123` | Savour Foods | Savour Delivery Dashboard |
-| **🛒 Savour Customer** | `customer@savour.com` | `Customer@123` | Savour Foods | Savour Green/Gold Customer Storefront |
-
----
-
-## 6. REAL-TIME SOCKET.IO ROOM ARCHITECTURE
-
-Located at `server/src/socket.ts`:
-
-| Room | Purpose | Real-Time Events |
-|---|---|---|
-| `tenant:{tenantId}` | Brand-isolated broadcasts | `product:added`, `product:updated`, `delivery:assigned` |
-| `branch:{branchId}` | Branch specific updates | `branch:status_updated` |
-| `kitchen:{branchId}` | KDS active tickets | `order:new`, `order:status_updated` |
-| `order:{orderId}` | Customer live order tracker | `order:status_updated`, `delivery:location_updated` |
-| `delivery:{deliveryId}` | Rider live GPS coordinates | `delivery:location_updated`, `delivery:status_updated` |
-| `rider:{riderId}` | Rider private dispatch channel | `delivery:assigned` |
-
----
-
-## 7. POSTGRESQL MULTI-TENANT DATABASE SCHEMA
-
-Located at `server/prisma/schema.prisma`:
-- **`Tenant`**: `id`, `name`, `slug`, `status`, `currency`, `timezone`, `country`
-- **`TenantBranding`**: `primaryColor`, `secondaryColor`, `accentColor`, `surfaceColor`, `logo`, `buttonRadius`, `cardRadius`
-- **`TenantSettings`**: `minimumOrder`, `deliveryFee`, `freeDeliveryThreshold`, `hotline`, `whatsapp`, `deliveryEnabled`
-- **`User`**: `id`, `tenantId`, `name`, `email`, `password`, `role` (7 roles), `phone`, `isActive`
-- **`RefreshToken`**: `id`, `userId`, `token`, `expiresAt`, `revokedAt`
-- **`Category`**: `id`, `tenantId`, `name`, `slug`, `image`, `sortOrder`, `isActive`
-- **`Product`**: `id`, `tenantId`, `categoryId`, `name`, `slug`, `basePrice`, `discountedPrice`, `image`, `isAvailable`
-- **`ProductOptionGroup`**: `id`, `tenantId`, `productId`, `name`, `minSelect`, `maxSelect`, `isRequired`
-- **`ProductOption`**: `id`, `groupId`, `name`, `priceModifier`
-- **`Branch`**: `id`, `tenantId`, `name`, `city`, `address`, `phone`, `isOpen`, `deliveryFee`, `minimumOrder`
-- **`Order`**: `id`, `tenantId`, `branchId`, `orderNumber`, `orderMode`, `paymentMethod`, `status`, `subtotal`, `deliveryFee`, `discount`, `total`
-- **`OrderItem`**: `id`, `orderId`, `productId`, `productName`, `quantity`, `unitPrice`, `totalPrice`, `optionsJson`
-- **`OrderStatusHistory`**: `id`, `orderId`, `oldStatus`, `newStatus`, `changedBy`, `timestamp`
-- **`Rider`**: `id`, `tenantId`, `userId`, `vehicleType`, `vehicleNumber`, `status`, `isAvailable`
-- **`Delivery`**: `id`, `tenantId`, `orderId`, `riderId`, `status`, `assignedAt`, `pickedUpAt`, `deliveredAt`
-- **`RiderLocation`**: `id`, `riderId`, `latitude`, `longitude`, `heading`, `speed`, `timestamp`
-- **`Voucher`**: `id`, `tenantId`, `code`, `discountType`, `discountValue`, `minimumOrder`, `maximumDiscount`
-- **`Banner`**: `id`, `tenantId`, `title`, `desktopImage`, `buttonText`, `buttonUrl`
-
----
-
-## 8. API ENDPOINTS REFERENCE (V1)
-
-Base URL: `http://localhost:5000/api/v1`
-
-### Tenants & Super Admin
-- `GET /tenants` - List active tenants (public for brand switcher)
-- `GET /tenants/:slug/public` - Storefront initialization data
-- `POST /tenants` - 1-Click Onboarding Wizard (Super Admin)
-- `PUT /tenants/:id/branding` - Visual Branding Editor (Admin)
-- `PUT /tenants/:id/settings` - Business Settings & Feature Flags (Admin)
-- `GET /analytics/superadmin` - Platform-wide cross-tenant stats
-
-### Authentication
-- `POST /auth/register` - Customer signup within active tenant
-- `POST /auth/login` - Unified login for all 7 roles across all brands
-- `GET /auth/me` - Profile & permissions of authenticated user
-
-### Catalog & Options
-- `GET /categories` - Categories for active tenant
-- `GET /products` - Products for active tenant (filtered by search, category, stock)
-- `GET /products/:id` - Product with option groups (Sizes, Crusts, Portions)
-- `POST /products/:id/options` - Add option customizer group (Admin)
-- `PUT /products/:id` - Update price/stock (Admin)
-
-### Orders & Tracking
-- `POST /orders` - Authoritative order placement (calculates total server-side)
-- `GET /orders` - Tenant orders feed (filtered by status/branch)
-- `GET /orders/:id` - Order details with status history snapshot
-- `PATCH /orders/:id/status` - Advance order workflow status (`PENDING` ➔ `PREPARING` ➔ `READY` ➔ `DELIVERED`)
-
-### Riders & Deliveries
-- `GET /deliveries/riders` - List active riders (Admin)
-- `POST /deliveries/assign` - Assign rider to order
-- `GET /deliveries/assigned` - Rider's active deliveries
-- `PATCH /deliveries/:id/status` - Rider marks `PICKED_UP`, `ON_THE_WAY`, `DELIVERED`
-- `POST /deliveries/:id/location` - Stream live rider GPS coordinates to customer map
-
----
-
-## 9. HOW TO LAUNCH LOCALLY (NO DOCKER)
-
-### Requirements:
-- **Node.js** v18+ (tested on Node v24.14.0)
-- **PostgreSQL** installed and running on `localhost:5432`
-
----
-
-### Step 1 — Setup Database
-Ensure PostgreSQL is running locally, then in `server/.env`:
-```env
-DATABASE_URL="postgresql://<username>:<password>@localhost:5432/cheezious_db?schema=public"
-PORT=5000
-```
-
-Run schema generation and seed:
-```bash
-cd server
-npm install
-npm run db:generate
-npm run db:push
-npm run db:seed
-```
-
----
-
-### Step 2 — Start Backend & Frontend
-Using `start.sh`:
-```bash
-./start.sh
-```
-
-Or manually:
-```bash
-# Terminal 1 (Backend)
-cd server
-npm run dev
-
-# Terminal 2 (Frontend)
-cd client
-npm run dev
-```
-
----
-
-## 10. END-TO-END VERIFICATION WALKTHROUGH
-
-1. **Open Storefront:** Navigate to `http://localhost:5173/`.
-2. **Switch Brands:** At the top banner, click **🍗 Savour Foods**. Notice the entire UI changes to Emerald Green & Royal Gold, displaying Traditional Pulao & Chicken Roasts.
-3. **Switch Back:** Click **🍕 Cheezious**. The UI returns to Red & Yellow with Pizzas and Burgers.
-4. **Try Customizer:** Click any Pizza or Pulao. The generic `<CustomizationModal>` opens allowing size and option selections with live price calculation.
-5. **Place Order:** Add item to cart and proceed to Checkout. Order is placed with authoritative server-side pricing.
-6. **Live Kitchen:** In a new window, log in as `kitchen@cheezious.com` (`Kitchen@123`). The kitchen display sounds an audio alert and displays the new ticket!
-7. **Rider Dispatch:** Accept order, move to Ready. In Rider Dashboard (`rider@cheezious.com`), accept delivery and click "Broadcast Live GPS" to stream coordinates to the customer map.
-
----
-
-## 11. CHANGELOG
-- **v4.0.0 (Current):** Master White-Label Multi-Tenant SaaS platform transformation per PRD v1.0.0. Added dynamic branding engine, tenant isolation, option customizer, KDS display, live GPS broadcaster, Super Admin onboarding wizard, and pre-seeded Cheezious & Savour Foods.
-- **v3.0.0:** Single login page for all 4 roles, removal of Docker containers.
-- **v2.0.0:** Real-time WebSockets synchronization.
-- **v1.0.0:** Initial Cheezious catalog scraper and layout.
+Browser visual checks and physical-device geolocation were unavailable in this session. See `walkthrough.md` for the manual checklist. Removing `.env` from the current Git index does not remove secrets from earlier commits; any previously shared credentials need rotation and repository-history handling separately.

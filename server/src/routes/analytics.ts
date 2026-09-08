@@ -3,15 +3,18 @@ import { UserRole } from '@prisma/client';
 import { prisma } from '../prisma';
 import { authenticateJWT, requireRole } from '../middleware/auth';
 
+import { requireTenantIsolation } from '../middleware/tenant';
+import { orderScope } from '../services/access';
 const router = Router();
 
 // ── GET /api/v1/analytics/stats (Tenant Specific Analytics) ─────────
-router.get('/stats', authenticateJWT, requireRole([UserRole.TENANT_ADMIN, UserRole.BRANCH_MANAGER, UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
+router.get('/stats', authenticateJWT, requireTenantIsolation, requireRole([UserRole.TENANT_ADMIN, UserRole.BRANCH_MANAGER, UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
   try {
     const tenantId = req.tenant!.id;
     const { branchId } = req.query;
 
-    const where: any = { tenantId };
+    const scope = await orderScope(req.user!, tenantId);
+    const where: any = { AND: [scope] };
     if (branchId && branchId !== 'ALL') {
       where.branchId = String(branchId);
     }
@@ -68,6 +71,7 @@ router.get('/superadmin', authenticateJWT, requireRole([UserRole.SUPER_ADMIN]), 
       where: { status: { not: 'CANCELLED' } },
     });
 
+    const totals = await prisma.order.groupBy({ by: ['tenantId'], _sum: { total: true }, where: { status: { not: 'CANCELLED' } } });
     const tenants = await prisma.tenant.findMany({
       include: {
         _count: { select: { orders: true, branches: true, products: true, users: true } },
@@ -76,9 +80,15 @@ router.get('/superadmin', authenticateJWT, requireRole([UserRole.SUPER_ADMIN]), 
       orderBy: { createdAt: 'desc' },
     });
 
+    const revenueByCurrency: Record<string, number> = {};
+    for (const total of totals) {
+      const currency = tenants.find(t => t.id === total.tenantId)?.currency || 'UNKNOWN';
+      revenueByCurrency[currency] = (revenueByCurrency[currency] || 0) + (total._sum.total || 0);
+    }
     res.json({
       success: true,
       data: {
+        revenueByCurrency: Object.entries(revenueByCurrency).map(([currency, total]) => ({currency, total})),
         totalTenants,
         activeTenants,
         totalBranches,
