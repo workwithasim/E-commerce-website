@@ -1,0 +1,7 @@
+<svg width="inherit" height="inherit" viewBox="0 0 31 32" fill="none"
+    xmlns="http://www.w3.org/2000/svg">
+    <g id="MapPin">
+        <path id="Vector" d="M15.4519 17C17.5854 17 19.3149 15.2091 19.3149 13C19.3149 10.7909 17.5854 9 15.4519 9C13.3184 9 11.5889 10.7909 11.5889 13C11.5889 15.2091 13.3184 17 15.4519 17Z" stroke="#F15B25" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="Vector_2" d="M25.1095 13C25.1095 22 15.452 29 15.452 29C15.452 29 5.79443 22 5.79443 13C5.79443 10.3478 6.81192 7.8043 8.62306 5.92893C10.4342 4.05357 12.8906 3 15.452 3C18.0133 3 20.4697 4.05357 22.2809 5.92893C24.092 7.8043 25.1095 10.3478 25.1095 13V13Z" stroke="#F15B25" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+</svg>

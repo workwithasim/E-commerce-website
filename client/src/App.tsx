@@ -4,13 +4,22 @@ import { Product, Category, Branch, CartItem, Order } from './types';
 import { AdminDashboard } from './admin/AdminDashboard';
 
 export const App: React.FC = () => {
-  // Navigation Routing: 'menu' | 'deals' | 'branches' | 'track' | 'account' | 'admin'
+  // Navigation: 'menu' | 'deals' | 'branches' | 'track' | 'account' | 'admin'
   const [currentPage, setCurrentPage] = useState<'menu' | 'deals' | 'branches' | 'track' | 'account' | 'admin'>('menu');
 
   // Master Data
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+
+  // Navigation Drawers & Modals
+  const [isLeftDrawerOpen, setIsLeftDrawerOpen] = useState<boolean>(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState<boolean>(false);
+  const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
+  const [activeOrder, setActiveOrder] = useState<Order | null>(null);
 
   // User & Location State
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(() => {
@@ -19,15 +28,13 @@ export const App: React.FC = () => {
   });
   const [selectedCity, setSelectedCity] = useState<string>('Islamabad');
   const [orderMode, setOrderMode] = useState<'DELIVERY' | 'PICKUP'>('DELIVERY');
-  const [deliveryAddress, setDeliveryAddress] = useState<string>('Islamabad');
-  const [isLocationModalOpen, setIsLocationModalOpen] = useState<boolean>(false);
+  const [deliveryAddress, setDeliveryAddress] = useState<string>('Enter the Delivery Address');
 
-  // Authenticated User State
+  // Authenticated User
   const [user, setUser] = useState<{ name: string; phone: string } | null>(() => {
     const saved = localStorage.getItem('cheezious_user');
     return saved ? JSON.parse(saved) : null;
   });
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [loginPhone, setLoginPhone] = useState<string>('');
   const [loginName, setLoginName] = useState<string>('');
   const [otpStep, setOtpStep] = useState<boolean>(false);
@@ -37,23 +44,17 @@ export const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [branchSearch, setBranchSearch] = useState<string>('');
+  const [trackSearchQuery, setTrackSearchQuery] = useState<string>('');
+  const [userOrders, setUserOrders] = useState<Order[]>([]);
 
-  // Cart State (Persisted in localStorage)
+  // Cart State
   const [cart, setCart] = useState<CartItem[]>(() => {
     const saved = localStorage.getItem('cheezious_fullstack_cart');
     return saved ? JSON.parse(saved) : [];
   });
-  const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [voucherCode, setVoucherCode] = useState<string>('');
   const [voucherDiscount, setVoucherDiscount] = useState<number>(0);
   const [voucherMessage, setVoucherMessage] = useState<{ text: string; isError: boolean } | null>(null);
-
-  // Modals & Active Order
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
-  const [activeOrder, setActiveOrder] = useState<Order | null>(null);
-  const [trackSearchQuery, setTrackSearchQuery] = useState<string>('');
-  const [userOrders, setUserOrders] = useState<Order[]>([]);
 
   // Product Customizer State
   const [customSize, setCustomSize] = useState<string>('Regular');
@@ -75,15 +76,20 @@ export const App: React.FC = () => {
   // Toast Notification
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Synchronize localStorage
+  // Banner State
+  const [activeBannerIdx, setActiveBannerIdx] = useState<number>(0);
+  const BANNERS = [
+    '/assets/thin_crispy_banner.jpg',
+    '/assets/g15_banner.png',
+    '/assets/full_house_banner.jpg'
+  ];
+
   useEffect(() => {
     localStorage.setItem('cheezious_fullstack_cart', JSON.stringify(cart));
   }, [cart]);
 
   useEffect(() => {
-    if (selectedBranch) {
-      localStorage.setItem('cheezious_branch', JSON.stringify(selectedBranch));
-    }
+    if (selectedBranch) localStorage.setItem('cheezious_branch', JSON.stringify(selectedBranch));
   }, [selectedBranch]);
 
   useEffect(() => {
@@ -94,20 +100,17 @@ export const App: React.FC = () => {
     }
   }, [user]);
 
-  // Initial Data Load & WebSockets Setup
   useEffect(() => {
     loadInitialData();
 
-    // If user has not selected location yet, open welcome location modal automatically!
-    const savedBranch = localStorage.getItem('cheezious_branch');
-    if (!savedBranch) {
-      setIsLocationModalOpen(true);
-    }
+    // Auto rotate banners every 6s
+    const timer = setInterval(() => {
+      setActiveBannerIdx((prev) => (prev + 1) % BANNERS.length);
+    }, 6000);
 
-    // Socket.io listeners
     socket.on('product:added', (newProd: Product) => {
       setProducts((prev) => [newProd, ...prev]);
-      showToast(`✨ New product added to menu: "${newProd.name}"`);
+      showToast(`✨ New item added to menu: "${newProd.name}"`);
     });
 
     socket.on('product:updated', (updated: Product) => {
@@ -127,6 +130,7 @@ export const App: React.FC = () => {
     });
 
     return () => {
+      clearInterval(timer);
       socket.off('product:added');
       socket.off('product:updated');
       socket.off('product:deleted');
@@ -155,11 +159,10 @@ export const App: React.FC = () => {
         setSelectedBranch(defaultBranch);
       }
     } catch (err) {
-      console.error('Failed to load initial data:', err);
+      console.error('Failed to load data:', err);
     }
   };
 
-  // Load orders for track / account
   const loadUserOrders = async () => {
     try {
       const allOrders = await api.getOrders();
@@ -293,11 +296,9 @@ export const App: React.FC = () => {
       const createdOrder = await api.createOrder(orderPayload);
       setActiveOrder(createdOrder);
 
-      // Join real-time WebSocket room
       socket.emit('join:order', createdOrder.id);
       socket.emit('join:order', createdOrder.orderNumber);
 
-      // Reset cart & modal
       setCart([]);
       setVoucherDiscount(0);
       setVoucherMessage(null);
@@ -308,7 +309,6 @@ export const App: React.FC = () => {
     }
   };
 
-  // Login with Phone OTP
   const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginPhone || loginPhone.length < 10) {
@@ -316,7 +316,7 @@ export const App: React.FC = () => {
       return;
     }
     setOtpStep(true);
-    showToast(`SMS OTP sent to ${loginPhone}! (Use code 1234 for demo)`);
+    showToast(`SMS code sent to ${loginPhone}! (Demo code: 1234)`);
   };
 
   const handleVerifyOtp = (e: React.FormEvent) => {
@@ -326,258 +326,311 @@ export const App: React.FC = () => {
       return;
     }
     const loggedUser = {
-      name: loginName || 'Cheezious Customer',
+      name: loginName || 'Customer',
       phone: loginPhone,
     };
     setUser(loggedUser);
     setIsLoginModalOpen(false);
     setOtpStep(false);
     setOtpCode('');
-    showToast(`Welcome back, ${loggedUser.name}!`);
+    showToast(`Signed in as ${loggedUser.name}!`);
   };
 
-  // Switch to Admin
   if (currentPage === 'admin') {
     return <AdminDashboard onBackToStore={() => setCurrentPage('menu')} />;
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-main)' }}>
+    <div style={{ minHeight: '100vh', background: '#FFFFFF' }}>
+      
       {/* Toast Alert */}
       {toastMessage && (
-        <div style={{ position: 'fixed', bottom: '24px', right: '24px', background: '#11141A', color: '#fff', padding: '14px 24px', borderRadius: '9999px', zIndex: 9999, fontWeight: 700, boxShadow: '0 10px 30px rgba(0,0,0,0.3)', borderLeft: '4px solid #F15B25' }}>
+        <div style={{ position: 'fixed', bottom: '24px', right: '24px', background: '#11141A', color: '#fff', padding: '14px 24px', borderRadius: '9999px', zIndex: 9999, fontWeight: 700, boxShadow: '0 10px 30px rgba(0,0,0,0.3)', borderLeft: '4px solid #E31837' }}>
           {toastMessage}
         </div>
       )}
 
-      {/* Top Announcement Bar */}
-      <aside className="top-announcement">
-        <span className="badge">Special Offer</span>
-        <span>🔥 Use promo code <strong>CHEEZY10</strong> for 10% OFF | Free Delivery on orders over Rs. 2,000!</span>
-      </aside>
+      {/* =========================================================================
+          EXACT CHEEZIOUS NAVBAR (100% IDENTICAL TO SCREENSHOT 1)
+          ========================================================================= */}
+      <header className="chz-header">
+        <div className="container chz-header-inner">
+          
+          {/* Left: Red Hamburger & Official Cheezious Logo */}
+          <div className="header-left">
+            <button className="hamburger-btn" onClick={() => setIsLeftDrawerOpen(true)} title="Open navigation menu">
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
 
-      {/* Main Header */}
-      <header className="header">
-        <div className="container header-inner">
-          <div className="brand-logo-wrap" onClick={() => setCurrentPage('menu')} style={{ cursor: 'pointer' }}>
-            <img className="brand-logo" src="/assets/cheezious.svg" alt="Cheezious Logo" />
+            <div className="chz-logo-link" onClick={() => setCurrentPage('menu')} style={{ cursor: 'pointer' }}>
+              <img className="chz-logo-img" src="/assets/mainLogo.png" alt="Cheezious" />
+            </div>
           </div>
 
-          {/* Location / Order Type Pill */}
-          <button className="location-btn" onClick={() => setIsLocationModalOpen(true)}>
-            <span className="location-icon">{orderMode === 'DELIVERY' ? '🛵' : '🛍️'}</span>
-            <span className="location-text">
-              {orderMode === 'DELIVERY' ? `Delivery: ${deliveryAddress}` : `Pickup: ${selectedBranch?.name || 'Islamabad'}`}
-            </span>
-            <span className="location-arrow">▼</span>
-          </button>
-
-          {/* Navigation Links */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              onClick={() => setCurrentPage('menu')}
-              style={{
-                padding: '8px 14px',
-                borderRadius: '9999px',
-                fontWeight: 700,
-                fontSize: '0.88rem',
-                color: currentPage === 'menu' ? '#F15B25' : '#4E5D78',
-                background: currentPage === 'menu' ? '#FFF2ED' : 'transparent',
-              }}
-            >
-              🍕 Menu
-            </button>
-
-            <button
-              onClick={() => setCurrentPage('deals')}
-              style={{
-                padding: '8px 14px',
-                borderRadius: '9999px',
-                fontWeight: 700,
-                fontSize: '0.88rem',
-                color: currentPage === 'deals' ? '#F15B25' : '#4E5D78',
-                background: currentPage === 'deals' ? '#FFF2ED' : 'transparent',
-              }}
-            >
-              🔥 Deals & Offers
-            </button>
-
-            <button
-              onClick={() => setCurrentPage('branches')}
-              style={{
-                padding: '8px 14px',
-                borderRadius: '9999px',
-                fontWeight: 700,
-                fontSize: '0.88rem',
-                color: currentPage === 'branches' ? '#F15B25' : '#4E5D78',
-                background: currentPage === 'branches' ? '#FFF2ED' : 'transparent',
-              }}
-            >
-              🏢 Branches ({branches.length})
-            </button>
-
-            <button
-              onClick={() => setCurrentPage('track')}
-              style={{
-                padding: '8px 14px',
-                borderRadius: '9999px',
-                fontWeight: 700,
-                fontSize: '0.88rem',
-                color: currentPage === 'track' ? '#F15B25' : '#4E5D78',
-                background: currentPage === 'track' ? '#FFF2ED' : 'transparent',
-              }}
-            >
-              📦 Track My Order
-            </button>
-          </nav>
-
-          {/* Search Box */}
-          <div className="search-box">
-            <span className="search-icon">🔍</span>
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Search pizza, burger, deals..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                if (currentPage !== 'menu') setCurrentPage('menu');
-              }}
-            />
-          </div>
-
-          {/* Right Header Actions */}
-          <div className="header-actions">
-            {/* User Account / Login Button */}
-            {user ? (
+          {/* Middle: DELIVERY / PICK-UP Switcher, Search Bar, Address Capsule */}
+          <div className="header-middle">
+            {/* Delivery vs Pick-Up Pill */}
+            <div className="order-switch-capsule">
               <button
-                onClick={() => setCurrentPage('account')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '8px 16px',
-                  borderRadius: '9999px',
-                  border: '1px solid #E5E7EB',
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
-                  color: '#18191F',
-                  background: '#F3F4F6',
-                }}
+                className={`order-switch-btn ${orderMode === 'DELIVERY' ? 'active' : ''}`}
+                onClick={() => setOrderMode('DELIVERY')}
               >
-                <span>👤 {user.name.split(' ')[0]}</span>
+                <img src="/assets/pin.1d35bccd.svg" alt="" style={{ width: '16px', height: '16px' }} />
+                <span>DELIVERY</span>
+              </button>
+              <button
+                className={`order-switch-btn ${orderMode === 'PICKUP' ? 'active' : ''}`}
+                onClick={() => setOrderMode('PICKUP')}
+              >
+                <img src="/assets/store.a7543dfa.svg" alt="" style={{ width: '16px', height: '16px' }} />
+                <span>PICK-UP</span>
+              </button>
+            </div>
+
+            {/* Find in cheezious Search Bar */}
+            <div className="search-capsule">
+              <img src="/assets/search.1d0c08c7.svg" alt="" className="search-icon" style={{ width: '16px', height: '16px' }} />
+              <input
+                type="text"
+                placeholder="Find in cheezious"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (currentPage !== 'menu') setCurrentPage('menu');
+                }}
+              />
+            </div>
+
+            {/* Enter the Delivery Address Capsule */}
+            <div className="address-capsule" onClick={() => setIsLocationModalOpen(true)}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                <img src="/assets/location.011c956f.svg" alt="" style={{ width: '14px', height: '14px' }} />
+                <span style={{ textOverflow: 'ellipsis', overflow: 'hidden' }}>{deliveryAddress}</span>
+              </div>
+              <img src="/assets/arrow.d9b04780.svg" alt="" style={{ width: '10px', height: '10px' }} />
+            </div>
+          </div>
+
+          {/* Right: Yellow CART & Yellow LOGIN Buttons */}
+          <div className="header-right">
+            {/* CART Button */}
+            <button className="chz-yellow-btn" onClick={() => setIsCartOpen(true)} title="View cart">
+              <img src="/assets/cart.59a90757.svg" alt="" style={{ width: '18px', height: '18px' }} />
+              <span>CART</span>
+              <span className="cart-counter-badge">{cart.reduce((s, i) => s + i.quantity, 0)}</span>
+            </button>
+
+            {/* LOGIN Button */}
+            {user ? (
+              <button className="chz-yellow-btn" onClick={() => setCurrentPage('account')}>
+                <img src="/assets/user.5fb6c6b7.svg" alt="" style={{ width: '16px', height: '16px' }} />
+                <span>{user.name.split(' ')[0].toUpperCase()}</span>
               </button>
             ) : (
-              <button
-                onClick={() => setIsLoginModalOpen(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '8px 16px',
-                  borderRadius: '9999px',
-                  border: '1px solid #E5E7EB',
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
-                  color: '#18191F',
-                }}
-              >
-                <span>👤 Sign In</span>
+              <button className="chz-yellow-btn" onClick={() => setIsLoginModalOpen(true)}>
+                <img src="/assets/user.5fb6c6b7.svg" alt="" style={{ width: '16px', height: '16px' }} />
+                <span>LOGIN</span>
               </button>
             )}
-
-            {/* Admin Portal Switcher */}
-            <button
-              onClick={() => setCurrentPage('admin')}
-              style={{
-                background: '#0F172A',
-                color: '#38BDF8',
-                border: '1px solid #38BDF8',
-                padding: '8px 16px',
-                borderRadius: '9999px',
-                fontWeight: 700,
-                fontSize: '0.82rem',
-              }}
-            >
-              ⚡ Kitchen Feed
-            </button>
-
-            {/* Cart Trigger */}
-            <button className="cart-trigger-btn" onClick={() => setIsCartOpen(true)}>
-              <span>🛒</span>
-              <span className="cart-badge">{cart.reduce((s, i) => s + i.quantity, 0)}</span>
-              <span className="cart-price-divider">|</span>
-              <span>Rs. {cartSubtotal.toLocaleString('en-PK')}</span>
-            </button>
           </div>
+
         </div>
       </header>
 
-      {/* VIEW 1: MENU & HOME */}
+      {/* =========================================================================
+          LEFT SLIDE-OUT DRAWER (Opened via Red Hamburger ☰)
+          ========================================================================= */}
+      <div className={`left-drawer-overlay ${isLeftDrawerOpen ? 'open' : ''}`} onClick={() => setIsLeftDrawerOpen(false)}>
+        <div className="left-drawer" onClick={(e) => e.stopPropagation()}>
+          <div className="left-drawer-header">
+            <img src="/assets/logo.svg" alt="Cheezious" style={{ height: '38px' }} />
+            <button onClick={() => setIsLeftDrawerOpen(false)} style={{ fontSize: '1.2rem', color: '#666' }}>✕</button>
+          </div>
+
+          <div className="drawer-links-list">
+            <div className="drawer-link-item" onClick={() => { setCurrentPage('menu'); setIsLeftDrawerOpen(false); }}>
+              <span className="drawer-link-icon">🍕</span>
+              <span>Explore Menu</span>
+            </div>
+
+            <div className="drawer-link-item" onClick={() => { setCurrentPage('deals'); setIsLeftDrawerOpen(false); }}>
+              <span className="drawer-link-icon">🔥</span>
+              <span>Special Offers & Deals</span>
+            </div>
+
+            <div className="drawer-link-item" onClick={() => { setCurrentPage('branches'); setIsLeftDrawerOpen(false); }}>
+              <span className="drawer-link-icon">🏢</span>
+              <span>Branch Locator (61)</span>
+            </div>
+
+            <div className="drawer-link-item" onClick={() => { setCurrentPage('track'); setIsLeftDrawerOpen(false); }}>
+              <span className="drawer-link-icon">📦</span>
+              <span>Track Order</span>
+            </div>
+
+            <div className="drawer-link-item" onClick={() => { setCurrentPage('account'); setIsLeftDrawerOpen(false); }}>
+              <span className="drawer-link-icon">👤</span>
+              <span>Order History & Account</span>
+            </div>
+
+            <div style={{ borderTop: '1px solid #EEEEEE', margin: '10px 0' }}></div>
+
+            <div className="drawer-link-item" style={{ color: '#0284C7' }} onClick={() => { setCurrentPage('admin'); setIsLeftDrawerOpen(false); }}>
+              <span className="drawer-link-icon">⚡</span>
+              <span>Kitchen & Admin Portal</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          VIEW 1: MENU & HOMEPAGE (100% Matching Screenshot 1)
+          ========================================================================= */}
       {(currentPage === 'menu' || currentPage === 'deals') && (
-        <>
-          {/* Hero Banner Carousel */}
-          <section className="hero-section container">
-            <div className="carousel-container">
-              <div className="carousel-track">
-                <div className="carousel-slide">
-                  <img
-                    src="https://s3-ap-southeast-1.amazonaws.com/prod-cheezious-content/banners/website/1787912722952-Web (3040x920).png"
-                    alt="Cheezious Banner"
-                    style={{ height: '360px', width: '100%', objectFit: 'cover' }}
-                  />
-                </div>
-              </div>
+        <div>
+          {/* Full Width Hero Banner */}
+          <div className="hero-full-wrap">
+            <img
+              className="hero-banner-img"
+              src={BANNERS[activeBannerIdx]}
+              alt="Cheezious Thin & Crispy"
+            />
+            {/* Solid Red Bar at bottom with white pagination dots */}
+            <div className="banner-red-bar">
+              {BANNERS.map((_, idx) => (
+                <div
+                  key={idx}
+                  className={`banner-dot ${idx === activeBannerIdx ? 'active' : ''}`}
+                  onClick={() => setActiveBannerIdx(idx)}
+                />
+              ))}
             </div>
-          </section>
+          </div>
 
-          {/* Sticky Category Bar */}
-          <nav className="category-nav-wrapper">
-            <div className="container">
-              <div className="category-nav-inner">
-                <button
-                  className={`cat-pill ${activeCategory === 'all' ? 'active' : ''}`}
-                  onClick={() => setActiveCategory('all')}
+          {/* Red Order Now Button Floating Row */}
+          <div className="banner-action-row">
+            <button className="red-order-btn" onClick={() => {
+              const el = document.getElementById('exploreMenuSection');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}>
+              ORDER NOW
+            </button>
+          </div>
+
+          {/* Section: Explore Menu Header & Authentic Carousel */}
+          <div className="explore-menu-wrap" id="exploreMenuSection">
+            <div className="explore-menu-header">
+              <h2 className="explore-menu-title">Explore Menu</h2>
+              <span className="view-all-link" onClick={() => { setActiveCategory('all'); setCurrentPage('menu'); }}>
+                VIEW ALL
+              </span>
+            </div>
+
+            {/* Category Carousel with Left/Right Navigation Arrows */}
+            <div className="explore-carousel-container">
+              <button
+                className="carousel-nav-btn prev"
+                onClick={() => {
+                  const track = document.getElementById('exploreTrack');
+                  if (track) track.scrollBy({ left: -320, behavior: 'smooth' });
+                }}
+                title="Previous categories"
+              >
+                ‹
+              </button>
+
+              <div className="explore-carousel-track" id="exploreTrack">
+                {/* 1. Thin Crust Pizza */}
+                <div
+                  className={`explore-cat-card ${activeCategory.toLowerCase().includes('thin') ? 'active' : ''}`}
+                  onClick={() => {
+                    const match = categories.find(c => c.name.toLowerCase().includes('thin'));
+                    setActiveCategory(match ? match.id : 'all');
+                  }}
                 >
-                  🔥 All Menu ({products.length})
-                </button>
+                  <img className="explore-cat-img" src="/assets/categories/thin_crust.jpg" alt="THIN CRUST PIZZA" />
+                  <div className="explore-cat-name">THIN CRUST PIZZA</div>
+                </div>
 
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    className={`cat-pill ${activeCategory === cat.id ? 'active' : ''}`}
-                    onClick={() => setActiveCategory(cat.id)}
-                  >
-                    {cat.image && <img src={cat.image} alt={cat.name} onError={(e: any) => (e.target.style.display = 'none')} />}
-                    <span>{cat.name}</span>
-                  </button>
-                ))}
+                {/* 2. Malai Tikka */}
+                <div
+                  className={`explore-cat-card ${activeCategory.toLowerCase().includes('malai') ? 'active' : ''}`}
+                  onClick={() => {
+                    const match = categories.find(c => c.name.toLowerCase().includes('malai'));
+                    setActiveCategory(match ? match.id : 'all');
+                  }}
+                >
+                  <img className="explore-cat-img" src="/assets/categories/malai_tikka.png" alt="MALAI TIKKA" />
+                  <div className="explore-cat-name">MALAI TIKKA</div>
+                </div>
+
+                {/* 3. Beef Pepperoni Pizza */}
+                <div
+                  className={`explore-cat-card ${activeCategory.toLowerCase().includes('pepperoni') ? 'active' : ''}`}
+                  onClick={() => {
+                    const match = categories.find(c => c.name.toLowerCase().includes('pepperoni'));
+                    setActiveCategory(match ? match.id : 'all');
+                  }}
+                >
+                  <img className="explore-cat-img" src="/assets/categories/beef_pepperoni.jpg" alt="BEEF PEPPERONI PIZZA" />
+                  <div className="explore-cat-name">BEEF PEPPERONI PIZZA</div>
+                </div>
+
+                {/* 4. Starters */}
+                <div
+                  className={`explore-cat-card ${activeCategory.toLowerCase().includes('starter') ? 'active' : ''}`}
+                  onClick={() => {
+                    const match = categories.find(c => c.name.toLowerCase().includes('starter'));
+                    setActiveCategory(match ? match.id : 'all');
+                  }}
+                >
+                  <img className="explore-cat-img" src="/assets/categories/starters.jpg" alt="STARTERS" />
+                  <div className="explore-cat-name">STARTERS</div>
+                </div>
+
+                {/* Dynamic categories from database */}
+                {categories
+                  .filter(c => !['thin', 'malai', 'pepperoni', 'starter'].some(k => c.name.toLowerCase().includes(k)))
+                  .map(cat => (
+                    <div
+                      key={cat.id}
+                      className={`explore-cat-card ${activeCategory === cat.id ? 'active' : ''}`}
+                      onClick={() => setActiveCategory(cat.id)}
+                    >
+                      {cat.image ? (
+                        <img className="explore-cat-img" src={cat.image} alt={cat.name} onError={(e: any) => (e.target.style.display = 'none')} />
+                      ) : (
+                        <div style={{ fontSize: '3.5rem', height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🍕</div>
+                      )}
+                      <div className="explore-cat-name">{cat.name.toUpperCase()}</div>
+                    </div>
+                  ))}
               </div>
+
+              <button
+                className="carousel-nav-btn next"
+                onClick={() => {
+                  const track = document.getElementById('exploreTrack');
+                  if (track) track.scrollBy({ left: 320, behavior: 'smooth' });
+                }}
+                title="Next categories"
+              >
+                ›
+              </button>
             </div>
-          </nav>
+          </div>
 
           {/* Products Grid */}
-          <main className="container menu-container" style={{ minHeight: '500px', marginTop: '24px' }}>
-            <div className="section-header">
-              <div className="section-title-wrap">
-                <h2 className="section-title">
-                  {currentPage === 'deals'
-                    ? 'Cheezious Special Deals & Offers'
-                    : activeCategory === 'all'
-                    ? 'Featured Cheezious Menu'
-                    : categories.find((c) => c.id === activeCategory)?.name || 'Menu'}
-                </h2>
-                <span className="section-count-badge">{filteredProducts.length} Items</span>
-              </div>
-            </div>
-
+          <div className="container" style={{ padding: '20px 24px 60px' }}>
             <div className="products-grid">
               {filteredProducts.map((p) => (
                 <div key={p.id} className="product-card" onClick={() => handleOpenProduct(p)}>
                   <div className="card-img-wrap">
                     <img className="card-img" src={p.image} alt={p.name} loading="lazy" />
                     {p.isBestSeller && <span className="card-badge bestseller">★ Bestseller</span>}
-                    {p.isDeal && <span className="card-badge">Special Deal</span>}
+                    {p.isDeal && <span className="card-badge" style={{ background: '#E31837' }}>Special Deal</span>}
                   </div>
                   <div className="card-content">
                     <h3 className="product-name">{p.name}</h3>
@@ -585,10 +638,11 @@ export const App: React.FC = () => {
                     <div className="card-footer">
                       <div className="price-wrap">
                         <span className="price-label">Price</span>
-                        <span className="product-price">Rs. {p.price.toLocaleString('en-PK')}</span>
+                        <span className="product-price" style={{ color: '#E31837' }}>Rs. {p.price.toLocaleString('en-PK')}</span>
                       </div>
                       <button
                         className="add-card-btn"
+                        style={{ background: '#FFE600', color: '#1A1A1A', border: 'none', fontWeight: 800 }}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleOpenProduct(p);
@@ -601,11 +655,13 @@ export const App: React.FC = () => {
                 </div>
               ))}
             </div>
-          </main>
-        </>
+          </div>
+        </div>
       )}
 
-      {/* VIEW 2: BRANCHES LOCATOR (/branches) */}
+      {/* =========================================================================
+          VIEW 2: BRANCHES LOCATOR
+          ========================================================================= */}
       {currentPage === 'branches' && (
         <div className="container" style={{ padding: '40px 24px', minHeight: '600px' }}>
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
@@ -624,7 +680,6 @@ export const App: React.FC = () => {
             </div>
           </div>
 
-          {/* City Tabs */}
           <div className="city-pills-bar" style={{ justifyContent: 'center', marginBottom: '30px' }}>
             {Array.from(new Set(branches.map((b) => b.city))).sort().map((city) => (
               <button
@@ -637,7 +692,6 @@ export const App: React.FC = () => {
             ))}
           </div>
 
-          {/* Branches Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
             {branches
               .filter((b) => b.city === selectedCity)
@@ -652,7 +706,7 @@ export const App: React.FC = () => {
                   <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
                     <button
                       className="add-card-btn"
-                      style={{ flex: 1, background: selectedBranch?.id === b.id ? '#10B981' : '#F15B25', color: '#fff', justifyContent: 'center' }}
+                      style={{ flex: 1, background: selectedBranch?.id === b.id ? '#10B981' : '#E31837', color: '#fff', justifyContent: 'center' }}
                       onClick={() => {
                         setSelectedBranch(b);
                         showToast(`Selected branch: ${b.name}`);
@@ -675,12 +729,14 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* VIEW 3: TRACK MY ORDER (/track-my-order) */}
+      {/* =========================================================================
+          VIEW 3: TRACK ORDER
+          ========================================================================= */}
       {currentPage === 'track' && (
         <div className="container" style={{ padding: '40px 24px', minHeight: '600px', maxWidth: '780px' }}>
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
             <h1 style={{ fontSize: '2.2rem', fontWeight: 800 }}>Live Order Tracking</h1>
-            <p style={{ color: '#4E5D78', marginTop: '8px' }}>Real-time updates directly from the Cheezious kitchen & rider GPS</p>
+            <p style={{ color: '#4E5D78', marginTop: '8px' }}>Real-time updates directly from the Cheezious kitchen</p>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
               <input
@@ -688,11 +744,11 @@ export const App: React.FC = () => {
                 placeholder="Enter Order ID (e.g. #CHZ-XXXXXX) or Phone Number"
                 value={trackSearchQuery}
                 onChange={(e) => setTrackSearchQuery(e.target.value)}
-                style={{ flex: 1, padding: '12px 18px', borderRadius: '12px' }}
+                style={{ flex: 1, padding: '12px 18px', borderRadius: '12px', border: '1px solid #CBD5E1' }}
               />
               <button
                 className="add-order-btn"
-                style={{ padding: '0 24px' }}
+                style={{ padding: '0 24px', background: '#E31837' }}
                 onClick={() => {
                   const found = userOrders.find(
                     (o) => o.orderNumber.toLowerCase().includes(trackSearchQuery.toLowerCase()) || o.customerPhone.includes(trackSearchQuery)
@@ -710,20 +766,18 @@ export const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Active Order Card */}
-          {activeOrder ? (
+          {activeOrder && (
             <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', border: '1px solid #E5E7EB', boxShadow: '0 10px 30px rgba(0,0,0,0.06)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #F3F4F6', paddingBottom: '16px', marginBottom: '20px' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#F15B25' }}>{activeOrder.orderNumber}</h3>
+                  <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#E31837' }}>{activeOrder.orderNumber}</h3>
                   <p style={{ fontSize: '0.85rem', color: '#4E5D78' }}>Placed by {activeOrder.customerName} • {activeOrder.customerPhone}</p>
                 </div>
-                <span style={{ background: '#FFF2ED', color: '#F15B25', fontWeight: 800, padding: '6px 14px', borderRadius: '9999px', fontSize: '0.85rem' }}>
+                <span style={{ background: '#FFF2ED', color: '#E31837', fontWeight: 800, padding: '6px 14px', borderRadius: '9999px', fontSize: '0.85rem' }}>
                   {activeOrder.status}
                 </span>
               </div>
 
-              {/* Real-time Stepper */}
               <div className="order-tracker-stepper">
                 <div className={`tracker-step ${['PENDING', 'PREPARING', 'ON_THE_WAY', 'DELIVERED'].includes(activeOrder.status) ? 'completed' : ''}`}>
                   <div className="step-circle">✓</div>
@@ -757,32 +811,14 @@ export const App: React.FC = () => {
                   </div>
                 </div>
               </div>
-
-              <div style={{ marginTop: '20px', background: '#F8F9FA', padding: '16px', borderRadius: '12px' }}>
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '8px' }}>Order Summary</h4>
-                {activeOrder.items.map((it, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                    <span>{it.quantity}x {it.productName}</span>
-                    <span style={{ fontWeight: 600 }}>Rs. {(it.unitPrice * it.quantity).toLocaleString('en-PK')}</span>
-                  </div>
-                ))}
-                <div style={{ borderTop: '1px solid #E5E7EB', marginTop: '10px', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
-                  <span>Total Payable:</span>
-                  <span style={{ color: '#F15B25' }}>Rs. {activeOrder.total.toLocaleString('en-PK')} ({activeOrder.paymentMethod})</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div style={{ background: '#fff', borderRadius: '16px', padding: '40px', textAlign: 'center', border: '1px solid #E5E7EB' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '12px' }}>📦</div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>No Active Tracked Order Selected</h3>
-              <p style={{ color: '#4E5D78', marginTop: '6px' }}>Place an order or enter your Order ID above to see live progress.</p>
             </div>
           )}
         </div>
       )}
 
-      {/* VIEW 4: CUSTOMER ACCOUNT & ORDER HISTORY (/account) */}
+      {/* =========================================================================
+          VIEW 4: USER ACCOUNT
+          ========================================================================= */}
       {currentPage === 'account' && (
         <div className="container" style={{ padding: '40px 24px', minHeight: '600px', maxWidth: '800px' }}>
           <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', border: '1px solid #E5E7EB', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -795,107 +831,60 @@ export const App: React.FC = () => {
                 onClick={() => {
                   setUser(null);
                   localStorage.removeItem('cheezious_user');
-                  showToast('Logged out');
+                  showToast('Signed out');
                 }}
                 style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.85rem' }}
               >
                 Sign Out
               </button>
             ) : (
-              <button className="add-order-btn" onClick={() => setIsLoginModalOpen(true)}>
+              <button className="chz-yellow-btn" onClick={() => setIsLoginModalOpen(true)}>
                 Sign In with Mobile
               </button>
             )}
           </div>
 
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '16px' }}>Recent Order History</h3>
-          {userOrders.length === 0 ? (
-            <div style={{ background: '#fff', borderRadius: '16px', padding: '40px', textAlign: 'center', border: '1px solid #E5E7EB' }}>
-              <p style={{ color: '#8C96A6' }}>No orders found yet. Start ordering to build your history!</p>
-              <button className="add-order-btn" style={{ marginTop: '14px' }} onClick={() => setCurrentPage('menu')}>
-                Browse Menu
-              </button>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '16px' }}>Past Orders</h3>
+          {userOrders.map((ord) => (
+            <div key={ord.id} style={{ background: '#fff', borderRadius: '14px', padding: '18px', border: '1px solid #E5E7EB', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontWeight: 800, color: '#E31837' }}>{ord.orderNumber}</span>
+                <span style={{ fontSize: '0.78rem', background: '#F3F4F6', padding: '4px 10px', borderRadius: '9999px', fontWeight: 700 }}>
+                  {ord.status}
+                </span>
+              </div>
+              <div style={{ fontSize: '0.85rem', color: '#4E5D78', marginBottom: '8px' }}>
+                {ord.items.map((it) => `${it.quantity}x ${it.productName}`).join(', ')}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: 700 }}>Rs. {ord.total.toLocaleString('en-PK')}</span>
+                <button
+                  style={{ color: '#E31837', fontWeight: 700, fontSize: '0.85rem' }}
+                  onClick={() => {
+                    setActiveOrder(ord);
+                    setCurrentPage('track');
+                  }}
+                >
+                  Track Live ➔
+                </button>
+              </div>
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {userOrders.map((ord) => (
-                <div key={ord.id} style={{ background: '#fff', borderRadius: '14px', padding: '18px', border: '1px solid #E5E7EB' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontWeight: 800, color: '#F15B25' }}>{ord.orderNumber}</span>
-                    <span style={{ fontSize: '0.78rem', background: '#F3F4F6', padding: '4px 10px', borderRadius: '9999px', fontWeight: 700 }}>
-                      {ord.status}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '0.85rem', color: '#4E5D78', marginBottom: '8px' }}>
-                    {ord.items.map((it) => `${it.quantity}x ${it.productName}`).join(', ')}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #F3F4F6', paddingTop: '8px' }}>
-                    <span style={{ fontWeight: 700 }}>Rs. {ord.total.toLocaleString('en-PK')}</span>
-                    <button
-                      style={{ color: '#F15B25', fontWeight: 700, fontSize: '0.85rem' }}
-                      onClick={() => {
-                        setActiveOrder(ord);
-                        setCurrentPage('track');
-                      }}
-                    >
-                      Track Live ➔
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          ))}
         </div>
       )}
 
-      {/* MODAL: FIRST-VISIT / ORDER TYPE SELECTOR */}
+      {/* =========================================================================
+          MODALS
+          ========================================================================= */}
+      {/* 1. Address / Location Modal */}
       {isLocationModalOpen && (
         <div className="modal-overlay open" onClick={() => setIsLocationModalOpen(false)}>
-          <div className="location-modal" style={{ maxWidth: '580px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="location-modal" style={{ maxWidth: '540px' }} onClick={(e) => e.stopPropagation()}>
             <div className="checkout-modal-header">
-              <h3 style={{ fontSize: '1.3rem', fontWeight: 800 }}>Welcome to Cheezious</h3>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Select Delivery Location</h3>
               <button className="modal-close-btn" style={{ position: 'static' }} onClick={() => setIsLocationModalOpen(false)}>✕</button>
             </div>
-
             <div style={{ padding: '24px' }}>
-              <p style={{ color: '#4E5D78', fontSize: '0.9rem', marginBottom: '18px' }}>Please select your order mode to see the live menu & deals in your area:</p>
-              
-              {/* Order Mode Switcher */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-                <div
-                  onClick={() => setOrderMode('DELIVERY')}
-                  style={{
-                    padding: '16px',
-                    borderRadius: '12px',
-                    border: orderMode === 'DELIVERY' ? '2px solid #F15B25' : '1px solid #E5E7EB',
-                    background: orderMode === 'DELIVERY' ? '#FFF2ED' : '#fff',
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div style={{ fontSize: '2rem' }}>🛵</div>
-                  <div style={{ fontWeight: 800, marginTop: '4px', color: orderMode === 'DELIVERY' ? '#F15B25' : '#18191F' }}>Delivery</div>
-                  <div style={{ fontSize: '0.75rem', color: '#8C96A6' }}>Doorstep delivery in 35-45 mins</div>
-                </div>
-
-                <div
-                  onClick={() => setOrderMode('PICKUP')}
-                  style={{
-                    padding: '16px',
-                    borderRadius: '12px',
-                    border: orderMode === 'PICKUP' ? '2px solid #F15B25' : '1px solid #E5E7EB',
-                    background: orderMode === 'PICKUP' ? '#FFF2ED' : '#fff',
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div style={{ fontSize: '2rem' }}>🛍️</div>
-                  <div style={{ fontWeight: 800, marginTop: '4px', color: orderMode === 'PICKUP' ? '#F15B25' : '#18191F' }}>Takeaway</div>
-                  <div style={{ fontSize: '0.75rem', color: '#8C96A6' }}>Pick up hot from restaurant</div>
-                </div>
-              </div>
-
-              {/* City Selection */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#4E5D78' }}>Select City</label>
                 <select
@@ -909,51 +898,36 @@ export const App: React.FC = () => {
                 </select>
               </div>
 
-              {orderMode === 'DELIVERY' ? (
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#4E5D78' }}>Delivery Address / Sector</label>
-                  <input
-                    type="text"
-                    value={deliveryAddress}
-                    onChange={(e) => setDeliveryAddress(e.target.value)}
-                    placeholder="e.g. Sector F-7/2, Street 4, Islamabad"
-                    style={{ width: '100%', padding: '12px', borderRadius: '8px', marginTop: '4px' }}
-                  />
-                </div>
-              ) : (
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#4E5D78' }}>Select Pickup Branch</label>
-                  <select
-                    value={selectedBranch?.id || ''}
-                    onChange={(e) => {
-                      const found = branches.find((b) => b.id === e.target.value);
-                      if (found) setSelectedBranch(found);
-                    }}
-                    style={{ width: '100%', padding: '12px', borderRadius: '8px', marginTop: '4px' }}
-                  >
-                    {branches.filter((b) => b.city === selectedCity).map((b) => (
-                      <option key={b.id} value={b.id}>{b.name} - {b.address}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#4E5D78' }}>Delivery Address / Area</label>
+                <input
+                  type="text"
+                  placeholder="e.g. F-7 Markaz, Street 12, Islamabad"
+                  value={deliveryAddress === 'Enter the Delivery Address' ? '' : deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', marginTop: '4px' }}
+                />
+              </div>
 
               <button
-                className="add-order-btn"
-                style={{ width: '100%', padding: '14px' }}
+                className="chz-yellow-btn"
+                style={{ width: '100%', justifyContent: 'center', padding: '14px' }}
                 onClick={() => {
+                  if (!deliveryAddress || deliveryAddress === 'Enter the Delivery Address') {
+                    setDeliveryAddress(`${selectedCity} Area`);
+                  }
                   setIsLocationModalOpen(false);
-                  showToast(`Location set: ${orderMode} in ${selectedCity}`);
+                  showToast(`Location set to: ${deliveryAddress}`);
                 }}
               >
-                Start Ordering ➔
+                Confirm Location
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL: PHONE OTP AUTHENTICATION */}
+      {/* 2. Login Modal */}
       {isLoginModalOpen && (
         <div className="modal-overlay open" onClick={() => setIsLoginModalOpen(false)}>
           <div className="checkout-modal" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
@@ -961,67 +935,37 @@ export const App: React.FC = () => {
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Sign In to Cheezious</h3>
               <button className="modal-close-btn" style={{ position: 'static' }} onClick={() => setIsLoginModalOpen(false)}>✕</button>
             </div>
-
             <div className="checkout-modal-body">
               {!otpStep ? (
                 <form onSubmit={handleSendOtp}>
-                  <p style={{ color: '#4E5D78', fontSize: '0.88rem', marginBottom: '16px' }}>
-                    Enter your Pakistani mobile number to receive a verification code.
-                  </p>
                   <div className="form-group" style={{ marginBottom: '14px' }}>
-                    <label>Full Name</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Asim Khalid"
-                      value={loginName}
-                      onChange={(e) => setLoginName(e.target.value)}
-                      required
-                    />
+                    <label>Your Name</label>
+                    <input type="text" placeholder="Asim Khalid" value={loginName} onChange={(e) => setLoginName(e.target.value)} required />
                   </div>
                   <div className="form-group" style={{ marginBottom: '20px' }}>
                     <label>Mobile Number (Pakistan)</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ padding: '10px 14px', background: '#F3F4F6', borderRadius: '8px', fontWeight: 700 }}>🇵🇰 +92</span>
-                      <input
-                        type="tel"
-                        placeholder="300-1234567"
-                        value={loginPhone}
-                        onChange={(e) => setLoginPhone(e.target.value)}
-                        style={{ flex: 1 }}
-                        required
-                      />
+                      <input type="tel" placeholder="300-1234567" value={loginPhone} onChange={(e) => setLoginPhone(e.target.value)} required style={{ flex: 1 }} />
                     </div>
                   </div>
-                  <button type="submit" className="checkout-action-btn">
-                    Send Verification Code ➔
+                  <button type="submit" className="chz-yellow-btn" style={{ width: '100%', justifyContent: 'center', padding: '12px' }}>
+                    Send Code ➔
                   </button>
                 </form>
               ) : (
                 <form onSubmit={handleVerifyOtp}>
-                  <p style={{ color: '#4E5D78', fontSize: '0.88rem', marginBottom: '16px' }}>
-                    We sent a 4-digit code to <strong>+92 {loginPhone}</strong>. (Use <strong>1234</strong>)
-                  </p>
-                  <div className="form-group" style={{ marginBottom: '20px' }}>
-                    <label>Enter 4-Digit Code</label>
-                    <input
-                      type="text"
-                      placeholder="1234"
-                      maxLength={4}
-                      value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value)}
-                      style={{ textAlign: 'center', fontSize: '1.4rem', letterSpacing: '8px', fontWeight: 800 }}
-                      required
-                    />
-                  </div>
-                  <button type="submit" className="checkout-action-btn">
-                    Verify & Continue ✓
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setOtpStep(false)}
-                    style={{ width: '100%', textAlign: 'center', marginTop: '12px', fontSize: '0.82rem', color: '#4E5D78' }}
-                  >
-                    Change phone number
+                  <p style={{ color: '#4E5D78', fontSize: '0.88rem', marginBottom: '16px' }}>Enter 4-digit code sent to +92 {loginPhone} (Use 1234)</p>
+                  <input
+                    type="text"
+                    maxLength={4}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    style={{ textAlign: 'center', fontSize: '1.5rem', letterSpacing: '8px', fontWeight: 800, width: '100%', padding: '12px', marginBottom: '16px' }}
+                    required
+                  />
+                  <button type="submit" className="chz-yellow-btn" style={{ width: '100%', justifyContent: 'center', padding: '12px' }}>
+                    Verify & Sign In ✓
                   </button>
                 </form>
               )}
@@ -1030,7 +974,7 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: PRODUCT CUSTOMIZATION */}
+      {/* 3. Product Customizer Modal */}
       {selectedProduct && (
         <div className="modal-overlay open" onClick={() => setSelectedProduct(null)}>
           <div className="product-modal" onClick={(e) => e.stopPropagation()}>
@@ -1041,7 +985,7 @@ export const App: React.FC = () => {
             <div className="modal-body">
               <h3 className="modal-product-title">{selectedProduct.name}</h3>
               <p className="modal-product-desc">{selectedProduct.description}</p>
-              <div className="modal-base-price">Rs. {selectedProduct.price.toLocaleString('en-PK')}</div>
+              <div className="modal-base-price" style={{ color: '#E31837' }}>Rs. {selectedProduct.price.toLocaleString('en-PK')}</div>
 
               {/* Pizza Sizes */}
               <div className="option-group">
@@ -1098,16 +1042,6 @@ export const App: React.FC = () => {
                   ))}
                 </div>
               </div>
-
-              {/* Special Instructions */}
-              <div className="option-group special-instructions-wrap">
-                <div className="option-group-title">Special Instructions</div>
-                <textarea
-                  placeholder="Less spicy, extra napkins please..."
-                  value={customNotes}
-                  onChange={(e) => setCustomNotes(e.target.value)}
-                />
-              </div>
             </div>
 
             <div className="modal-footer">
@@ -1116,7 +1050,7 @@ export const App: React.FC = () => {
                 <span className="stepper-value">{customQty}</span>
                 <button className="stepper-btn" onClick={() => setCustomQty(customQty + 1)}>+</button>
               </div>
-              <button className="add-order-btn" onClick={handleAddToCart}>
+              <button className="add-order-btn" style={{ background: '#FFE600', color: '#1A1A1A', fontWeight: 800 }} onClick={handleAddToCart}>
                 Add to Cart • Rs. {(selectedProduct.price * customQty).toLocaleString('en-PK')}
               </button>
             </div>
@@ -1124,7 +1058,7 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: CART DRAWER */}
+      {/* 4. Cart Drawer */}
       {isCartOpen && (
         <div className="cart-drawer-overlay open" onClick={() => setIsCartOpen(false)}>
           <div className="cart-drawer" onClick={(e) => e.stopPropagation()}>
@@ -1136,8 +1070,8 @@ export const App: React.FC = () => {
               <button className="cart-drawer-close" onClick={() => setIsCartOpen(false)}>✕</button>
             </div>
 
-            <div className="cart-delivery-banner">
-              {orderMode === 'DELIVERY' ? `🛵 Delivery to ${deliveryAddress}` : `🛍️ Pick up at ${selectedBranch?.name || 'Islamabad'}`}
+            <div className="cart-delivery-banner" style={{ color: '#E31837', background: '#FFF5F6' }}>
+              {orderMode === 'DELIVERY' ? `🛵 Delivering to ${deliveryAddress}` : `🛍️ Pick up at ${selectedBranch?.name || 'Islamabad'}`}
             </div>
 
             <div className="cart-items-list">
@@ -1146,7 +1080,7 @@ export const App: React.FC = () => {
                   <div className="empty-cart-icon">🍕</div>
                   <h3>Your Cart is Empty</h3>
                   <p>Explore our menu and add your favorite Cheezious pizzas, burgers, and deals!</p>
-                  <button className="add-order-btn" onClick={() => setIsCartOpen(false)}>Start Ordering</button>
+                  <button className="chz-yellow-btn" onClick={() => setIsCartOpen(false)}>Start Ordering</button>
                 </div>
               ) : (
                 cart.map((item) => (
@@ -1154,8 +1088,8 @@ export const App: React.FC = () => {
                     <img className="cart-item-img" src={item.image} alt={item.name} />
                     <div className="cart-item-info">
                       <h4 className="cart-item-name">{item.name}</h4>
-                      <p className="cart-item-customizations">{[item.size, item.crust, item.instructions].filter(Boolean).join(' • ')}</p>
-                      <div className="cart-item-price">Rs. {(item.unitPrice * item.quantity).toLocaleString('en-PK')}</div>
+                      <p className="cart-item-customizations">{[item.size, item.crust].filter(Boolean).join(' • ')}</p>
+                      <div className="cart-item-price" style={{ color: '#E31837' }}>Rs. {(item.unitPrice * item.quantity).toLocaleString('en-PK')}</div>
                       <div className="cart-item-stepper">
                         <button onClick={() => {
                           if (item.quantity <= 1) {
@@ -1187,7 +1121,7 @@ export const App: React.FC = () => {
                       value={voucherCode}
                       onChange={(e) => setVoucherCode(e.target.value)}
                     />
-                    <button className="voucher-btn" onClick={handleApplyVoucher}>Apply</button>
+                    <button className="voucher-btn" style={{ background: '#1A1A1A' }} onClick={handleApplyVoucher}>Apply</button>
                   </div>
                   {voucherMessage && (
                     <div className={`voucher-feedback ${voucherMessage.isError ? 'error' : 'success'}`}>
@@ -1213,10 +1147,11 @@ export const App: React.FC = () => {
                   )}
                   <div className="bill-row grand-total">
                     <span>Total Payable</span>
-                    <span>Rs. {grandTotal.toLocaleString('en-PK')}</span>
+                    <span style={{ color: '#E31837' }}>Rs. {grandTotal.toLocaleString('en-PK')}</span>
                   </div>
                   <button
-                    className="checkout-action-btn"
+                    className="chz-yellow-btn"
+                    style={{ width: '100%', justifyContent: 'center', padding: '14px', marginTop: '12px' }}
                     onClick={() => {
                       setIsCartOpen(false);
                       setIsCheckoutOpen(true);
@@ -1231,7 +1166,7 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: CHECKOUT */}
+      {/* 5. Checkout Modal */}
       {isCheckoutOpen && (
         <div className="modal-overlay open" onClick={() => setIsCheckoutOpen(false)}>
           <div className="checkout-modal" onClick={(e) => e.stopPropagation()}>
@@ -1279,7 +1214,7 @@ export const App: React.FC = () => {
                   ))}
                 </div>
 
-                <button type="submit" className="checkout-action-btn" style={{ marginTop: '24px' }}>
+                <button type="submit" className="chz-yellow-btn" style={{ width: '100%', justifyContent: 'center', padding: '14px', marginTop: '24px' }}>
                   Confirm & Place Order (Rs. {grandTotal.toLocaleString('en-PK')}) ✓
                 </button>
               </form>
@@ -1293,18 +1228,18 @@ export const App: React.FC = () => {
         <div className="container">
           <div className="footer-grid">
             <div className="footer-brand">
-              <img src="/assets/cheezious.svg" alt="Cheezious Logo" style={{ height: '44px', marginBottom: '16px', filter: 'brightness(0) invert(1)' }} />
+              <img src="/assets/logo.svg" alt="Cheezious Logo" style={{ height: '44px', marginBottom: '16px', filter: 'brightness(0) invert(1)' }} />
               <h3>The Cheeziest Food in Town</h3>
-              <p>Full-Stack PERN Platform with PostgreSQL, Node.js, Express, React, TypeScript and WebSockets.</p>
+              <p>Full-Stack PERN Platform matching cheezious.com 100%.</p>
             </div>
             <div className="footer-column">
               <h4>Quick Navigation</h4>
               <ul className="footer-links">
-                <li><a href="#" onClick={() => setCurrentPage('menu')}>Menu</a></li>
+                <li><a href="#" onClick={() => setCurrentPage('menu')}>Explore Menu</a></li>
                 <li><a href="#" onClick={() => setCurrentPage('deals')}>Special Offers</a></li>
                 <li><a href="#" onClick={() => setCurrentPage('branches')}>61 Nationwide Branches</a></li>
                 <li><a href="#" onClick={() => setCurrentPage('track')}>Track My Order</a></li>
-                <li><a href="#" onClick={() => setCurrentPage('admin')}>Kitchen / Admin Dashboard</a></li>
+                <li><a href="#" onClick={() => setCurrentPage('admin')}>Kitchen & Admin Feed</a></li>
               </ul>
             </div>
             <div className="footer-column">
@@ -1314,7 +1249,7 @@ export const App: React.FC = () => {
             </div>
           </div>
           <div className="footer-bottom">
-            <div>© 2026 Cheezious PERN Edition. 110% Dynamic Full-Stack.</div>
+            <div>© 2026 Cheezious Official Clone. 100% Identical Experience.</div>
           </div>
         </div>
       </footer>
