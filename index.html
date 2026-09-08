@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cheezious - The Cheeziest Food in Town | Order Online</title>
+  <meta name="description" content="Order online from Cheezious Pakistan. Explore our famous Crown Crust Pizzas, Bazinga Burgers, Full House Deals, Pastas, Starters and fast delivery in Islamabad, Rawalpindi, Lahore, Karachi and more.">
+  <meta name="keywords" content="Cheezious, pizza, burger, fast food, online food delivery, Islamabad, Lahore, Rawalpindi, crown crust pizza">
+  <meta name="theme-color" content="#F15B25">
+
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content="Cheezious - The Cheeziest Food in Town">
+  <meta property="og:description" content="Order delicious Cheezious pizzas, burgers, and deals online for fast delivery.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/cheezious.svg">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="assets/cheezious.svg">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ==========================================================================
+       TOP ANNOUNCEMENT BAR
+       ========================================================================== -->
+  <aside class="top-announcement">
+    <span class="badge">Special Offer</span>
+    <span>🔥 Use promo code <strong>CHEEZY10</strong> for 10% OFF your order! Free Delivery on orders over Rs. 2,000!</span>
+  </aside>
+
+  <!-- ==========================================================================
+       MAIN NAVIGATION HEADER
+       ========================================================================== -->
+  <header class="header">
+    <div class="container header-inner">
+      
+      <!-- Brand Logo -->
+      <a href="#" class="brand-logo-wrap" title="Cheezious Pakistan">
+        <img class="brand-logo" src="assets/cheezious.svg" alt="Cheezious Logo" width="160" height="48">
+      </a>
+
+      <!-- Order Mode Switcher -->
+      <div class="order-mode-toggle" role="radiogroup" aria-label="Order Mode Selection">
+        <button class="mode-btn active" id="deliveryModeBtn" title="Switch to Delivery">
+          <span>🛵 Delivery</span>
+        </button>
+        <button class="mode-btn" id="pickupModeBtn" title="Switch to Takeaway">
+          <span>🛍️ Takeaway</span>
+        </button>
+      </div>
+
+      <!-- Current Location Selector -->
+      <button class="location-btn" id="locationPickerBtn" onclick="openLocationModal()" title="Select your city and branch">
+        <span class="location-icon">📍</span>
+        <span class="location-text" id="currentLocationText">Islamabad - Select Branch</span>
+        <span class="location-arrow">▼</span>
+      </button>
+
+      <!-- Search Box -->
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" id="headerSearchInput" placeholder="Search pizza, burger, deals..." aria-label="Search food items">
+        <button class="search-clear-btn" id="searchClearBtn" title="Clear search">✕</button>
+      </div>
+
+      <!-- Header Actions -->
+      <div class="header-actions">
+        <button class="branches-nav-btn" onclick="openLocationModal()">
+          <span>🏢 61 Branches</span>
+        </button>
+        
+        <!-- Cart Trigger Button -->
+        <button class="cart-trigger-btn" id="headerCartBtn" onclick="openCartDrawer()" title="View your shopping cart">
+          <span>🛒</span>
+          <span class="cart-badge" id="cartHeaderBadge">0</span>
+          <span class="cart-price-divider">|</span>
+          <span id="cartHeaderPrice">Rs. 0</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       HERO BANNER CAROUSEL
+       ========================================================================== -->
+  <section class="hero-section container">
+    <div class="carousel-container" id="carouselContainer">
+      <div class="carousel-track" id="carouselTrack">
+        <!-- Injected via app.js -->
+      </div>
+      <button class="carousel-nav-btn prev" id="carouselPrev" aria-label="Previous Banner">‹</button>
+      <button class="carousel-nav-btn next" id="carouselNext" aria-label="Next Banner">›</button>
+      <div class="carousel-dots" id="carouselDots">
+        <!-- Injected via app.js -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       PERKS & PROMOTIONAL HIGHLIGHTS
+       ========================================================================== -->
+  <section class="container">
+    <div class="perks-bar">
+      <div class="perk-card">
+        <div class="perk-icon">🍕</div>
+        <div class="perk-info">
+          <h4>100% Fresh Dough</h4>
+          <p>Hand-kneaded daily with premium dairy</p>
+        </div>
+      </div>
+      <div class="perk-card">
+        <div class="perk-icon">⚡</div>
+        <div class="perk-info">
+          <h4>Lightning Fast Delivery</h4>
+          <p>35-45 mins average hot doorstep delivery</p>
+        </div>
+      </div>
+      <div class="perk-card">
+        <div class="perk-icon">🧀</div>
+        <div class="perk-info">
+          <h4>Cheeziest Crown Crust</h4>
+          <p>Filled with authentic rich mozzarella</p>
+        </div>
+      </div>
+      <div class="perk-card">
+        <div class="perk-icon">💳</div>
+        <div class="perk-info">
+          <h4>Multiple Payment Modes</h4>
+          <p>Cash on Delivery, Cards, Easypaisa/JazzCash</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       CATEGORY NAVIGATION BAR (STICKY SCROLL-SPY)
+       ========================================================================== -->
+  <nav class="category-nav-wrapper">
+    <div class="container">
+      <div class="category-nav-inner" id="categoryNavInner">
+        <!-- Category pills injected via app.js -->
+      </div>
+    </div>
+  </nav>
+
+  <!-- ==========================================================================
+       MAIN FOOD MENU SHOWCASE
+       ========================================================================== -->
+  <main class="container menu-container" id="menuContainer">
+    <!-- Category sections and product grids injected via app.js -->
+  </main>
+
+  <!-- ==========================================================================
+       FOOTER
+       ========================================================================== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        
+        <!-- Column 1: Brand & Slogan -->
+        <div class="footer-brand">
+          <img src="assets/cheezious.svg" alt="Cheezious Logo" style="height: 44px; margin-bottom: 16px; filter: brightness(0) invert(1);">
+          <h3>The Cheeziest Food in Town</h3>
+          <p>Serving Pakistan's favorite crown crust pizzas, bazinga burgers, and scrumptious platters across 61+ branches nationwide.</p>
+          <div class="footer-social-links">
+            <a href="https://facebook.com/cheezious" class="social-icon-btn" target="_blank" rel="noopener" aria-label="Facebook">f</a>
+            <a href="https://instagram.com/cheezious" class="social-icon-btn" target="_blank" rel="noopener" aria-label="Instagram">📸</a>
+            <a href="https://tiktok.com/@cheezious" class="social-icon-btn" target="_blank" rel="noopener" aria-label="TikTok">🎵</a>
+            <a href="https://youtube.com/cheezious" class="social-icon-btn" target="_blank" rel="noopener" aria-label="YouTube">▶</a>
+          </div>
+        </div>
+
+        <!-- Column 2: Quick Links -->
+        <div class="footer-column">
+          <h4>Explore</h4>
+          <ul class="footer-links">
+            <li><a href="#menuContainer">Full Menu</a></li>
+            <li><a href="#" onclick="openLocationModal()">Branch Locations</a></li>
+            <li><a href="#">Cheezious Deals</a></li>
+            <li><a href="#">Crown Crust Special</a></li>
+            <li><a href="#">Bazinga Burgers</a></li>
+          </ul>
+        </div>
+
+        <!-- Column 3: Company & Franchise -->
+        <div class="footer-column">
+          <h4>Company</h4>
+          <ul class="footer-links">
+            <li><a href="#">About Us</a></li>
+            <li><a href="#">Franchise Opportunities</a></li>
+            <li><a href="#">Careers</a></li>
+            <li><a href="#">Customer Feedback</a></li>
+            <li><a href="#">Privacy Policy</a></li>
+            <li><a href="#">Terms & Conditions</a></li>
+          </ul>
+        </div>
+
+        <!-- Column 4: Contact & Download App -->
+        <div class="footer-column">
+          <h4>Contact & Mobile App</h4>
+          <p style="font-size:0.9rem; margin-bottom: 12px;">📞 UAN: <strong>051-111-44-66-99</strong></p>
+          <p style="font-size:0.85rem; color:#A0AEC0; margin-bottom: 16px;">Email: support@cheezious.com</p>
+          <div class="footer-app-badges">
+            <a href="#" class="app-store-btn">
+              <span>📱</span>
+              <div>
+                <div style="font-size:0.7rem; text-transform:uppercase; color:#A0AEC0;">Download on the</div>
+                <div style="font-size:0.95rem; font-weight:700;">Apple App Store</div>
+              </div>
+            </a>
+            <a href="#" class="app-store-btn">
+              <span>🤖</span>
+              <div>
+                <div style="font-size:0.7rem; text-transform:uppercase; color:#A0AEC0;">Get it on</div>
+                <div style="font-size:0.95rem; font-weight:700;">Google Play Store</div>
+              </div>
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer Bottom -->
+      <div class="footer-bottom">
+        <div>© 2026 Cheezious Pakistan. All Rights Reserved. Crafted with passion & extra cheese.</div>
+        <div style="color:#A0AEC0;">Prices are inclusive of applicable taxes.</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==========================================================================
+       MOBILE BOTTOM NAVIGATION BAR
+       ========================================================================== -->
+  <nav class="mobile-bottom-nav">
+    <a href="#" class="mobile-nav-item active" onclick="window.scrollTo({top:0, behavior:'smooth'})">
+      <i>🏠</i>
+      <span>Home</span>
+    </a>
+    <a href="#menuContainer" class="mobile-nav-item">
+      <i>🍕</i>
+      <span>Menu</span>
+    </a>
+    <a href="javascript:void(0)" class="mobile-nav-item" onclick="openLocationModal()">
+      <i>📍</i>
+      <span>Branches</span>
+    </a>
+    <a href="javascript:void(0)" class="mobile-nav-item" onclick="openCartDrawer()">
+      <i>🛒</i>
+      <span>Cart (<span id="mobileCartBadge">0</span>)</span>
+    </a>
+  </nav>
+
+  <!-- ==========================================================================
+       MODAL 1: PRODUCT DETAIL & CUSTOMIZATION MODAL
+       ========================================================================== -->
+  <div class="modal-overlay" id="productModalOverlay" onclick="if(event.target===this) closeProductModal()">
+    <div class="product-modal">
+      <div class="modal-header-img">
+        <img id="modalProductImg" src="" alt="Product Image">
+        <button class="modal-close-btn" onclick="closeProductModal()" aria-label="Close dialog">✕</button>
+      </div>
+      <div class="modal-body">
+        <h3 class="modal-product-title" id="modalProductTitle">Product Title</h3>
+        <p class="modal-product-desc" id="modalProductDesc">Description</p>
+        <div class="modal-base-price" id="modalProductPrice">Rs. 0</div>
+        
+        <!-- Dynamic Options: Sizes, Crusts, Flavors, Drinks, Addons -->
+        <div id="modalDynamicOptions"></div>
+      </div>
+      <div class="modal-footer">
+        <div class="quantity-stepper">
+          <button class="stepper-btn" onclick="adjustModalQuantity(-1)" aria-label="Decrease quantity">-</button>
+          <span class="stepper-value" id="modalStepperValue">1</span>
+          <button class="stepper-btn" onclick="adjustModalQuantity(1)" aria-label="Increase quantity">+</button>
+        </div>
+        <button class="add-order-btn" id="modalAddOrderBtn" onclick="addCustomizedProductToCart()">
+          Add to Order • Rs. 0
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 2: SLIDE-OUT SHOPPING CART DRAWER
+       ========================================================================== -->
+  <div class="cart-drawer-overlay" id="cartDrawerOverlay" onclick="if(event.target===this) closeCartDrawer()">
+    <div class="cart-drawer">
+      
+      <div class="cart-drawer-header">
+        <div class="cart-drawer-title">
+          <span>🛒 Your Order</span>
+          <span style="font-size:0.9rem; color:var(--text-muted);" id="cartDrawerCount">(0)</span>
+        </div>
+        <button class="cart-drawer-close" onclick="closeCartDrawer()" aria-label="Close cart">✕</button>
+      </div>
+
+      <div class="cart-delivery-banner" id="cartBranchInfo">
+        Delivering from: Islamabad Branch
+      </div>
+
+      <!-- Items List -->
+      <div class="cart-items-list" id="cartItemsList">
+        <!-- Rendered via app.js -->
+      </div>
+
+      <!-- Voucher Promo Code -->
+      <div class="voucher-section" id="cartVoucherSection">
+        <div class="voucher-form">
+          <input type="text" class="voucher-input" id="voucherInput" placeholder="Promo Code (e.g. CHEEZY10)">
+          <button class="voucher-btn" onclick="applyVoucherCode()">Apply</button>
+        </div>
+        <div id="voucherFeedback"></div>
+      </div>
+
+      <!-- Bill Breakdown -->
+      <div class="cart-bill-section" id="cartBillSection">
+        <div class="bill-row">
+          <span>Subtotal</span>
+          <span id="billSubtotal">Rs. 0</span>
+        </div>
+        <div class="bill-row">
+          <span>Delivery Fee</span>
+          <span id="billDeliveryFee">Rs. 100</span>
+        </div>
+        <div class="bill-row discount-row" id="billDiscountRow" style="display:none;">
+          <span>Discount</span>
+          <span id="billDiscountVal">-Rs. 0</span>
+        </div>
+        <div class="bill-row grand-total">
+          <span>Total Payable</span>
+          <span id="billGrandTotal">Rs. 0</span>
+        </div>
+        <button class="checkout-action-btn" onclick="openCheckoutModal()">
+          <span>Proceed to Checkout</span>
+          <span>➔</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 3: CHECKOUT & ADDRESS MODAL
+       ========================================================================== -->
+  <div class="modal-overlay" id="checkoutModalOverlay" onclick="if(event.target===this) closeCheckoutModal()">
+    <div class="checkout-modal">
+      
+      <div class="checkout-modal-header">
+        <h3 style="font-size: 1.25rem; font-weight: 800;">Complete Your Cheezious Order</h3>
+        <button class="modal-close-btn" style="position:static;" onclick="closeCheckoutModal()">✕</button>
+      </div>
+
+      <div class="checkout-modal-body">
+        <form id="checkoutForm" onsubmit="handleCheckoutSubmit(event)">
+          
+          <!-- Contact Info -->
+          <div class="form-section-title">👤 Contact Information</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="custName">Full Name *</label>
+              <input type="text" id="custName" placeholder="Ali Khan" required>
+            </div>
+            <div class="form-group">
+              <label for="custPhone">Phone Number *</label>
+              <input type="tel" id="custPhone" placeholder="0300-1234567" required pattern="[0-9]{10,12}">
+            </div>
+          </div>
+
+          <!-- Delivery Address -->
+          <div class="form-section-title">📍 Delivery Address</div>
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label for="custAddress">Street Address / House No. *</label>
+              <input type="text" id="custAddress" placeholder="House 12, Street 4, Sector F-7/2" required>
+            </div>
+            <div class="form-group">
+              <label for="custLandmark">Nearest Landmark (Optional)</label>
+              <input type="text" id="custLandmark" placeholder="Near Jinnah Super / Park">
+            </div>
+            <div class="form-group">
+              <label for="custNotes">Rider Instructions (Optional)</label>
+              <input type="text" id="custNotes" placeholder="Ring doorbell, do not knock">
+            </div>
+          </div>
+
+          <!-- Payment Options -->
+          <div class="form-section-title">💳 Select Payment Method</div>
+          <div class="payment-methods">
+            <label class="payment-card active">
+              <input type="radio" name="paymentMethod" value="COD" checked>
+              <span class="payment-card-icon">💵</span>
+              <span class="payment-card-name">Cash on Delivery</span>
+            </label>
+            <label class="payment-card">
+              <input type="radio" name="paymentMethod" value="Card">
+              <span class="payment-card-icon">💳</span>
+              <span class="payment-card-name">Debit / Credit Card</span>
+            </label>
+            <label class="payment-card">
+              <input type="radio" name="paymentMethod" value="JazzCash">
+              <span class="payment-card-icon">📱</span>
+              <span class="payment-card-name">JazzCash / Easypaisa</span>
+            </label>
+          </div>
+
+          <button type="submit" class="checkout-action-btn" style="margin-top:24px;">
+            <span>Confirm & Place Order</span>
+            <span>✓</span>
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 4: ORDER CONFIRMATION & LIVE TRACKER
+       ========================================================================== -->
+  <div class="modal-overlay" id="orderSuccessModalOverlay">
+    <div class="checkout-modal" style="max-width:520px;">
+      <div class="checkout-modal-body order-success-card">
+        
+        <div class="success-check-icon">✓</div>
+        <h3 style="font-size:1.6rem; font-weight:800; color:var(--text-primary); margin-bottom:6px;">Order Confirmed!</h3>
+        <p style="color:var(--text-secondary); font-size:0.92rem;">Thank you, <strong id="successCustName">Customer</strong>! Your feast is on its way.</p>
+        
+        <div style="background:var(--surface-alt); padding:12px; border-radius:var(--radius-sm); margin:16px 0; font-size:0.9rem;">
+          <div>Order Tracking ID: <strong id="successOrderId" style="color:var(--primary);">#CHZ-123456</strong></div>
+          <div style="color:var(--text-muted); font-size:0.8rem; margin-top:4px;">Total: <strong id="successTotal">Rs. 0</strong> • <span id="successPayment">COD</span></div>
+          <div style="font-size:0.78rem; color:var(--text-secondary); margin-top:2px;" id="successAddress"></div>
+        </div>
+
+        <!-- Progress Stepper -->
+        <div class="order-tracker-stepper">
+          
+          <div class="tracker-step completed" id="trackerStep1">
+            <div class="step-circle">✓</div>
+            <div class="step-info">
+              <h5>Order Placed</h5>
+              <p>Received by Cheezious Kitchen</p>
+            </div>
+          </div>
+
+          <div class="tracker-step active" id="trackerStep2">
+            <div class="step-circle">👨‍🍳</div>
+            <div class="step-info">
+              <h5>Kitchen Preparing</h5>
+              <p>Fresh dough stretched & baking hot in oven</p>
+            </div>
+          </div>
+
+          <div class="tracker-step" id="trackerStep3">
+            <div class="step-circle">🛵</div>
+            <div class="step-info">
+              <h5>Rider Dispatched</h5>
+              <p>Hot in insulated thermal bag heading to you</p>
+            </div>
+          </div>
+
+          <div class="tracker-step" id="trackerStep4">
+            <div class="step-circle">🎉</div>
+            <div class="step-info">
+              <h5>Delivered</h5>
+              <p>Enjoy your Cheezy feast!</p>
+            </div>
+          </div>
+
+        </div>
+
+        <button class="add-order-btn" style="width:100%;" onclick="closeOrderSuccessModal()">
+          Back to Menu
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 5: BRANCH & LOCATION SELECTOR
+       ========================================================================== -->
+  <div class="modal-overlay" id="locationModalOverlay" onclick="if(event.target===this) closeLocationModal()">
+    <div class="location-modal">
+      <div class="checkout-modal-header">
+        <h3 style="font-size: 1.25rem; font-weight: 800;">Select Branch & City (61 Outlets)</h3>
+        <button class="modal-close-btn" style="position:static;" onclick="closeLocationModal()">✕</button>
+      </div>
+
+      <!-- City Navigation Pills -->
+      <div class="city-pills-bar" id="modalCityBar">
+        <!-- Injected via app.js -->
+      </div>
+
+      <!-- Branches List -->
+      <div class="branches-list" id="modalBranchesList">
+        <!-- Injected via app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Pre-bundled Catalog Data for Instant Offline / file:// Support -->
+  <script src="data/catalog.js"></script>
+  <!-- Application Script -->
+  <script src="js/app.js"></script>
+</body>
+</html>

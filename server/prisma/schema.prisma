@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  image     String?
+  slug      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Product {
+  id              String      @id @default(cuid())
+  name            String
+  description     String?
+  price           Float
+  discountedPrice Float?
+  image           String
+  isBestSeller    Boolean     @default(false)
+  isDeal          Boolean     @default(false)
+  inStock         Boolean     @default(true)
+  categoryId      String?
+  category        Category?   @relation(fields: [categoryId], references: [id])
+  orderItems      OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  name      String
+  city      String
+  address   String
+  phone     String
+  isOpen    Boolean  @default(true)
+  timing    String   @default("11:00 AM - 03:00 AM")
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique
+  customerName    String
+  customerPhone   String
+  deliveryAddress String?
+  landmark        String?
+  notes           String?
+  orderMode       String      @default("DELIVERY")
+  branchId        String?
+  branch          Branch?     @relation(fields: [branchId], references: [id])
+  paymentMethod   String      @default("COD")
+  status          String      @default("PENDING") // PENDING, PREPARING, ON_THE_WAY, DELIVERED, CANCELLED
+  subtotal        Float
+  deliveryFee     Float       @default(0)
+  discount        Float       @default(0)
+  total           Float
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model OrderItem {
+  id           String   @id @default(cuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String?
+  product      Product? @relation(fields: [productId], references: [id])
+  productName  String
+  quantity     Int      @default(1)
+  unitPrice    Float
+  size         String?
+  crust        String?
+  flavor       String?
+  drink        String?
+  addons       String?
+  instructions String?
+}
+
+model Voucher {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  discountType  String   @default("PERCENT") // PERCENT or FLAT
+  discountValue Float
+  minOrder      Float    @default(0)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+}
