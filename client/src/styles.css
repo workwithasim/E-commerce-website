@@ -532,13 +532,12 @@ button {
 }
 
 /* ==========================================================================
-   HAMBURGER LEFT SLIDE-OUT DRAWER
+   HAMBURGER LEFT SLIDE-OUT DRAWER — Container & Overlay
    ========================================================================== */
 .left-drawer-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.45);
   z-index: 200;
   opacity: 0;
   visibility: hidden;
@@ -555,7 +554,7 @@ button {
   top: 0;
   left: 0;
   bottom: 0;
-  width: 320px;
+  width: 300px;
   background: #FFFFFF;
   z-index: 210;
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
@@ -563,47 +562,204 @@ button {
   flex-direction: column;
   transform: translateX(-100%);
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
 }
 
 .left-drawer-overlay.open .left-drawer {
   transform: translateX(0);
 }
 
-.left-drawer-header {
-  padding: 20px 24px;
-  border-bottom: 1px solid #EEEEEE;
+/* Cheezious Exact Sidebar Styles */
+.chz-drawer-user-section {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 24px 16px;
 }
 
-.drawer-links-list {
-  padding: 16px 0;
+.chz-drawer-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #FFE600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.chz-drawer-avatar svg {
+  width: 30px;
+  height: 30px;
+  color: #1a1a1a;
+}
+
+.chz-drawer-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chz-drawer-user-sub {
+  font-size: 0.78rem;
+  color: #888;
+  font-weight: 400;
+}
+
+.chz-drawer-user-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  letter-spacing: -0.01em;
+}
+
+.chz-drawer-login-btn {
+  display: block;
+  width: 100%;
+  padding: 10px 0;
+  border: 2px solid #1a1a1a;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.chz-drawer-login-btn:hover {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+.chz-drawer-logout-btn {
+  border-color: var(--chz-red);
+  color: var(--chz-red);
+}
+
+.chz-drawer-logout-btn:hover {
+  background: var(--chz-red);
+  color: #fff;
+}
+
+.chz-drawer-divider {
+  height: 1px;
+  background: #EEEEEE;
+  margin: 0 0 8px;
+}
+
+.chz-drawer-nav {
   display: flex;
   flex-direction: column;
 }
 
-.drawer-link-item {
+.chz-drawer-nav-item {
   display: flex;
   align-items: center;
   gap: 16px;
   padding: 14px 24px;
   font-size: 0.95rem;
   font-weight: 700;
-  color: var(--chz-dark);
+  color: #1a1a1a;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s, color 0.15s;
 }
 
-.drawer-link-item:hover {
+.chz-drawer-nav-item:hover {
   background: #FFF5F6;
   color: var(--chz-red);
 }
 
-.drawer-link-icon {
-  font-size: 1.2rem;
+.chz-drawer-nav-item:hover .chz-drawer-nav-icon {
+  color: var(--chz-red);
+}
+
+.chz-drawer-nav-icon {
   width: 24px;
-  text-align: center;
+  height: 24px;
+  flex-shrink: 0;
+  color: #444;
+  transition: color 0.15s;
+}
+
+.chz-drawer-nav-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.chz-drawer-admin-item {
+  color: #0284C7;
+}
+
+.chz-drawer-admin-item .chz-drawer-nav-icon {
+  color: #0284C7;
+}
+
+.chz-drawer-text-links {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 24px;
+}
+
+.chz-drawer-text-link {
+  padding: 10px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.chz-drawer-text-link:hover {
+  color: var(--chz-red);
+}
+
+.chz-drawer-hotline-bar {
+  background: #FFE600;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.chz-drawer-hotline-logo {
+  height: 32px;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.chz-drawer-hotline-text {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  flex: 1;
+}
+
+.chz-drawer-hotline-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #FFE600;
+  border: 2px solid #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1a1a1a;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+  text-decoration: none;
+}
+
+.chz-drawer-hotline-btn:hover {
+  background: #1a1a1a;
+  color: #FFE600;
+}
+
+.chz-drawer-hotline-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 /* ==========================================================================

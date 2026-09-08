@@ -439,49 +439,103 @@ export const App: React.FC = () => {
         </div>
       </header>
 
-      {/* =========================================================================
-          LEFT SLIDE-OUT DRAWER (Opened via Red Hamburger ☰)
+      {/* ==================================================================           LEFT SLIDE-OUT DRAWER (Opened via Red Hamburger ☰) — Cheezious Exact Style
           ========================================================================= */}
       <div className={`left-drawer-overlay ${isLeftDrawerOpen ? 'open' : ''}`} onClick={() => setIsLeftDrawerOpen(false)}>
         <div className="left-drawer" onClick={(e) => e.stopPropagation()}>
-          <div className="left-drawer-header">
-            <img src="/assets/logo.svg" alt="Cheezious" style={{ height: '38px' }} />
-            <button onClick={() => setIsLeftDrawerOpen(false)} style={{ fontSize: '1.2rem', color: '#666' }}>✕</button>
+
+          {/* ── User / Login Section ── */}
+          <div className="chz-drawer-user-section">
+            <div className="chz-drawer-avatar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+              </svg>
+            </div>
+            <div className="chz-drawer-user-info">
+              <span className="chz-drawer-user-sub">
+                {user ? `Hello, ${user.name}` : 'Login to explore'}
+              </span>
+              <span className="chz-drawer-user-title">World of flavors</span>
+            </div>
           </div>
 
-          <div className="drawer-links-list">
-            <div className="drawer-link-item" onClick={() => { setCurrentPage('menu'); setIsLeftDrawerOpen(false); }}>
-              <span className="drawer-link-icon">🍕</span>
+          {!user ? (
+            <div style={{ padding: '0 24px 20px' }}>
+              <button
+                className="chz-drawer-login-btn"
+                onClick={() => { setIsLoginModalOpen(true); setIsLeftDrawerOpen(false); }}
+              >
+                LOGIN
+              </button>
+            </div>
+          ) : (
+            <div style={{ padding: '0 24px 20px' }}>
+              <button
+                className="chz-drawer-login-btn chz-drawer-logout-btn"
+                onClick={() => { setUser(null); localStorage.removeItem('cheezious_user'); setIsLeftDrawerOpen(false); }}
+              >
+                LOGOUT
+              </button>
+            </div>
+          )}
+
+          <div className="chz-drawer-divider" />
+
+          {/* ── Main Nav Links ── */}
+          <div className="chz-drawer-nav">
+            <div className="chz-drawer-nav-item" onClick={() => { setCurrentPage('menu'); setIsLeftDrawerOpen(false); }}>
+              <span className="chz-drawer-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+              </span>
               <span>Explore Menu</span>
             </div>
 
-            <div className="drawer-link-item" onClick={() => { setCurrentPage('deals'); setIsLeftDrawerOpen(false); }}>
-              <span className="drawer-link-icon">🔥</span>
-              <span>Special Offers & Deals</span>
-            </div>
-
-            <div className="drawer-link-item" onClick={() => { setCurrentPage('branches'); setIsLeftDrawerOpen(false); }}>
-              <span className="drawer-link-icon">🏢</span>
-              <span>Branch Locator (61)</span>
-            </div>
-
-            <div className="drawer-link-item" onClick={() => { setCurrentPage('track'); setIsLeftDrawerOpen(false); }}>
-              <span className="drawer-link-icon">📦</span>
-              <span>Track Order</span>
-            </div>
-
-            <div className="drawer-link-item" onClick={() => { setCurrentPage('account'); setIsLeftDrawerOpen(false); }}>
-              <span className="drawer-link-icon">👤</span>
-              <span>Order History & Account</span>
-            </div>
-
-            <div style={{ borderTop: '1px solid #EEEEEE', margin: '10px 0' }}></div>
-
-            <div className="drawer-link-item" style={{ color: '#0284C7' }} onClick={() => { setCurrentPage('admin'); setIsLeftDrawerOpen(false); }}>
-              <span className="drawer-link-icon">⚡</span>
-              <span>Kitchen & Admin Portal</span>
+            <div className="chz-drawer-nav-item" onClick={() => { setCurrentPage('branches'); setIsLeftDrawerOpen(false); }}>
+              <span className="chz-drawer-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                  <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+              </span>
+              <span>Branch Locator</span>
             </div>
           </div>
+
+          <div className="chz-drawer-divider" />
+
+          {/* ── Footer Text Links ── */}
+          <div className="chz-drawer-text-links">
+            <span className="chz-drawer-text-link">Blog</span>
+            <span className="chz-drawer-text-link">Privacy Policy</span>
+          </div>
+
+          {/* ── Admin Portal (subtle) ── */}
+          <div className="chz-drawer-nav" style={{ marginTop: 'auto' }}>
+            <div className="chz-drawer-nav-item chz-drawer-admin-item" onClick={() => { setCurrentPage('admin'); setIsLeftDrawerOpen(false); }}>
+              <span className="chz-drawer-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+                </svg>
+              </span>
+              <span>Admin Portal</span>
+            </div>
+          </div>
+
+          {/* ── Bottom Yellow Hotline Bar ── */}
+          <div className="chz-drawer-hotline-bar">
+            <img src="/assets/logo.svg" alt="Cheezious" className="chz-drawer-hotline-logo" />
+            <span className="chz-drawer-hotline-text">Cheezious Hotline</span>
+            <a href="tel:+922111116666" className="chz-drawer-hotline-btn" aria-label="Call Cheezious Hotline">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
+              </svg>
+            </a>
+          </div>
+
         </div>
       </div>
 
