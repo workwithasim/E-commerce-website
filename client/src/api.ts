@@ -1,8 +1,9 @@
+/// <reference types="vite/client" />
 import { io } from 'socket.io-client';
 import { Category, Product, Branch, Order, AnalyticsStats } from './types';
 
-export const API_URL = 'http://localhost:5000';
-export const socket = io(API_URL);
+export const API_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.port === '5173' ? 'http://localhost:5000' : '');
+export const socket = io(API_URL || undefined);
 
 // API Service
 export const api = {
