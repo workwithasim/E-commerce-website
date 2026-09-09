@@ -41,6 +41,15 @@ Phase A is implemented and automatically verified. Manual browser verification o
 - [x] Database integration verifies authorized admin access, customer rejection, totals, preparation duration, and actor visibility.
 - [ ] Internal notes, communication, COD settlement, issues, and manual override sections depend on their later dedicated phases. Browser layout/keyboard verification remains pending.
 
+### Phase D — Customer/admin/rider communication
+
+- [x] Tenant/order-authorized message storage and APIs with sender identity/role and timestamps.
+- [x] Customer ownership, staff permission/branch scope, assigned-rider access, post-delivery rider cutoff, and cross-customer denial.
+- [x] Existing lifecycle history appears as distinct system messages; human messages emit through the existing private order Socket.IO room.
+- [x] Customer tracking, rider assignment, and admin order-detail chat interfaces.
+- [x] Staff-only internal order notes with audit entries; customer APIs and note endpoints do not expose them.
+- [ ] Read receipts, conversation moderation tools, and browser/realtime visual verification.
+
 ## Verification log
 
 - Initial review: client build and server type check pass, but runtime contracts and access controls need repair.
@@ -52,6 +61,7 @@ Phase A is implemented and automatically verified. Manual browser verification o
 - Documentation milestone: `PRD.md`, `readmeimportant.md`, and `walkthrough.md` now distinguish implemented web behavior, verification evidence, and remaining product scope. Unsupported references to nonexistent PRD sections were removed from maintained code.
 - Session lifecycle increment: 16 server tests pass, including refresh-token hashing, successful one-time rotation, reuse rejection, logout revocation, and disabled-user rejection. Server and client production builds pass. The database-backed integration flow also verifies persisted refresh rotation, reuse rejection, and logout revocation. Manual browser expiry behavior remains pending.
 - RBAC/staff/rider/admin-order increment: 20 server tests pass. New coverage verifies combined roles, cross-tenant assignment rejection, assigned-branch order scope, and support/payment separation. The PostgreSQL-backed flow verifies staff lifecycle/audit, rider management, and the staff-only complete order projection/timeline while rejecting customer access. The local additive schema and nine existing tenant users were backfilled successfully.
+- Communication increment: server/client builds and the 20-test regression suite pass. The PostgreSQL-backed flow verifies customer and active assigned-rider messaging, customer visibility of rider replies, unrelated-customer denial, rider cutoff after delivery, customer denial of internal notes, and audited admin note creation.
 - Local secrets: `server/.env` was removed from the Git index while retaining the local file. Historical commits are unaffected. The example environment file now contains placeholders and the correct origin/secret settings.
 
 ## Remaining verification and future scope

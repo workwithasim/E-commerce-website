@@ -39,6 +39,8 @@ export const App: React.FC<AppProps> = ({ authUser, onLogout, onOpenLogin }) => 
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [trackId, setTrackId] = useState('');
   const [location, setLocation] = useState<RiderLocation | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [messageText, setMessageText] = useState('');
   const [banner, setBanner] = useState(0);
   const money = (n: number) => `${settings?.currencySymbol || tenant?.currency || ''} ${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
   const branch = branches.find(b => b.id === branchId);
@@ -82,11 +84,12 @@ export const App: React.FC<AppProps> = ({ authUser, onLogout, onOpenLogin }) => 
   useEffect(() => {
     if (!activeOrder) return;
     setLocation(null);
-    const join = () => { socket.emit('join:order', activeOrder.id); api.getOrder(activeOrder.id).then(setActiveOrder).catch(e => setError(e.message)); };
+    const join = () => { socket.emit('join:order', activeOrder.id); api.getOrder(activeOrder.id).then(setActiveOrder).catch(e => setError(e.message)); api.getOrderMessages(activeOrder.id).then(setMessages).catch(e => setError(e.message)); };
     const update = (order: Order) => { if (order.id === activeOrder.id) setActiveOrder(prev => prev ? { ...prev, ...order } : order); setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...order } : o)); };
     const gps = (data: any) => { if (data.orderId === activeOrder.id) setLocation(data); };
-    join(); socket.on('connect', join); socket.on('order:status_updated', update); socket.on('delivery:location_updated', gps);
-    return () => { socket.emit('leave:order', activeOrder.id); socket.off('connect', join); socket.off('order:status_updated', update); socket.off('delivery:location_updated', gps); };
+    const newMessage = (message: any) => { if (message.orderId === activeOrder.id) setMessages(previous => [...previous.filter(value => value.id !== message.id), message]); };
+    join(); socket.on('connect', join); socket.on('order:status_updated', update); socket.on('delivery:location_updated', gps); socket.on('message:new', newMessage);
+    return () => { socket.emit('leave:order', activeOrder.id); socket.off('connect', join); socket.off('order:status_updated', update); socket.off('delivery:location_updated', gps); socket.off('message:new', newMessage); };
   }, [activeOrder?.id]);
   useEffect(() => { const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { setDrawer(false); setCartOpen(false); setCheckout(false); setProduct(null); } }; window.addEventListener('keydown', esc); return () => window.removeEventListener('keydown', esc); }, []);
 
@@ -126,7 +129,7 @@ export const App: React.FC<AppProps> = ({ authUser, onLogout, onOpenLogin }) => 
       {!authUser ? <><h1>Sign in to view your orders</h1><button className="add-order-btn" onClick={onOpenLogin}>Sign in</button></> : <>
       <h1>{page === 'account' ? `Hello, ${authUser.name}` : 'Track your order'}</h1><p>{authUser.email}</p><button className="text-button" onClick={() => { onLogout?.(); setOrders([]); setActiveOrder(null); }}>Sign out</button>
       {page === 'track' && <form className="tracking-search" onSubmit={async e => { e.preventDefault(); try { setActiveOrder(await api.getOrder(trackId.trim())); } catch (e: any) { setError(e.message); } }}><input aria-label="Order number" required value={trackId} onChange={e => setTrackId(e.target.value)} placeholder="Enter your exact order number"/><button className="add-card-btn">Track</button></form>}
-      {activeOrder && <article className="tracking-card"><h2>{activeOrder.orderNumber}</h2><p className="status-badge">{activeOrder.status.replace(/_/g,' ')}</p><p>Total: {money(activeOrder.total)}</p><ol>{activeOrder.statusHistory?.map(h => <li key={h.id}>{h.newStatus.replace(/_/g,' ')} · {new Date(h.timestamp).toLocaleString()}</li>)}</ol>{activeOrder.delivery?.rider && <p>Rider: {activeOrder.delivery.rider.user.name}</p>}{location && settings?.riderTrackingEnabled !== false && <div><p>Last location update: {new Date(location.timestamp!).toLocaleTimeString()}</p><iframe title="Rider location map" className="rider-map" src={`https://www.openstreetmap.org/export/embed.html?bbox=${location.longitude-0.01},${location.latitude-0.01},${location.longitude+0.01},${location.latitude+0.01}&layer=mapnik&marker=${location.latitude},${location.longitude}`}/><a target="_blank" rel="noreferrer" href={`https://www.openstreetmap.org/?mlat=${location.latitude}&mlon=${location.longitude}#map=16/${location.latitude}/${location.longitude}`}>Open rider location</a></div>}</article>}
+      {activeOrder && <article className="tracking-card"><h2>{activeOrder.orderNumber}</h2><p className="status-badge">{activeOrder.status.replace(/_/g,' ')}</p><p>Total: {money(activeOrder.total)}</p><ol>{activeOrder.statusHistory?.map(h => <li key={h.id}>{h.newStatus.replace(/_/g,' ')} · {new Date(h.timestamp).toLocaleString()}</li>)}</ol>{activeOrder.delivery?.rider && <p>Rider: {activeOrder.delivery.rider.user.name}</p>}{location && settings?.riderTrackingEnabled !== false && <div><p>Last location update: {new Date(location.timestamp!).toLocaleTimeString()}</p><iframe title="Rider location map" className="rider-map" src={`https://www.openstreetmap.org/export/embed.html?bbox=${location.longitude-0.01},${location.latitude-0.01},${location.longitude+0.01},${location.latitude+0.01}&layer=mapnik&marker=${location.latitude},${location.longitude}`}/><a target="_blank" rel="noreferrer" href={`https://www.openstreetmap.org/?mlat=${location.latitude}&mlon=${location.longitude}#map=16/${location.latitude}/${location.longitude}`}>Open rider location</a></div>}<h3>Order messages</h3>{messages.map(message => <p key={message.id}><strong>{message.type === 'SYSTEM' ? 'System' : message.sender?.name || 'Staff'}:</strong> {message.message}</p>)}<form onSubmit={async event => { event.preventDefault(); if (!messageText.trim()) return; await api.sendOrderMessage(activeOrder.id, messageText); setMessageText(''); }}><input aria-label="Message about this order" value={messageText} onChange={event => setMessageText(event.target.value)} maxLength={2000}/><button>Send</button></form></article>}
       <h2>Your orders</h2>{!orders.length && <p>No previous orders.</p>}{orders.map(o => <button className="order-history-row" key={o.id} onClick={() => { setActiveOrder(o); setPage('track'); }}><span>{o.orderNumber}</span><span>{o.status.replace(/_/g,' ')} · {money(o.total)}</span></button>)}</>}
     </main>}
     {product && <CustomizationModal product={product} onClose={() => setProduct(null)} onAddToCart={i => { setCart(prev => [...prev,i]); setCartOpen(true); }}/>}

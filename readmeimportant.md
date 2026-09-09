@@ -42,6 +42,7 @@ For an existing database, staff need explicit `BranchStaff` memberships. Kitchen
 - Tenant admins manage staff from the Staff tab. New employees start inactive with an expiring invitation; development returns a local acceptance path and does not claim email delivery. Assignment changes revoke existing refresh sessions and staff disable immediately blocks authentication/actions.
 - Authorized admins manage rider vehicle, registration, delivery-zone, and branch details from the Riders tab and can inspect delivery history and recent operational activity. This does not add continuous location surveillance or COD settlement behavior.
 - Authorized operations staff can open Full details on an order to see the customer summary, items, financials, kitchen actors/timing, delivery timestamps, payment state, and a chronological history/audit timeline. Customer order APIs do not receive this internal projection.
+- Customers, authorized branch/support staff, and the actively assigned rider can exchange order messages. Rider access ends after delivery/cancellation. Lifecycle changes appear as system messages. Internal notes stay staff-only and are audited.
 - Dedicated entry URLs are available for `/admin/login`, `/staff/login`, `/kitchen`, `/branch`, `/rider/login`, and `/platform/login`; all use the same identity and session backend.
 
 ## Access and real-time behavior

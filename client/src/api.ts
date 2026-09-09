@@ -349,6 +349,22 @@ export const api = {
     return handleResponse(await authenticatedFetch(`${API_URL}/api/v1/orders/admin/${id}`));
   },
 
+  async getOrderMessages(id: string): Promise<any[]> {
+    return handleResponse(await authenticatedFetch(`${API_URL}/api/v1/orders/${id}/messages`));
+  },
+
+  async sendOrderMessage(id: string, message: string): Promise<any> {
+    return handleResponse(await authenticatedFetch(`${API_URL}/api/v1/orders/${id}/messages`, { method: 'POST', body: JSON.stringify({ message }) }));
+  },
+
+  async getInternalNotes(id: string): Promise<any[]> {
+    return handleResponse(await authenticatedFetch(`${API_URL}/api/v1/orders/${id}/internal-notes`));
+  },
+
+  async addInternalNote(id: string, note: string): Promise<any> {
+    return handleResponse(await authenticatedFetch(`${API_URL}/api/v1/orders/${id}/internal-notes`, { method: 'POST', body: JSON.stringify({ note }) }));
+  },
+
   async updateOrderStatus(id: string, status: string, note?: string): Promise<Order> {
     const res = await authenticatedFetch(`${API_URL}/api/v1/orders/${id}/status`, {
       method: 'PATCH',

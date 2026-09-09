@@ -90,6 +90,11 @@ enum InvitationStatus {
   REVOKED
 }
 
+enum MessageType {
+  HUMAN
+  SYSTEM
+}
+
 model Tenant {
   id           String               @id @default(cuid())
   name         String
@@ -117,6 +122,8 @@ model Tenant {
   auditLogs    AuditLog[]
   roleAssignments RoleAssignment[]
   staffInvitations StaffInvitation[]
+  messages     OrderMessage[]
+  internalNotes InternalOrderNote[]
 }
 
 model TenantBranding {
@@ -222,6 +229,8 @@ model User {
   auditLogs     AuditLog[]
   roleAssignments RoleAssignment[]
   staffInvitation StaffInvitation?
+  sentMessages OrderMessage[]
+  internalNotes InternalOrderNote[]
 
   @@index([tenantId])
 }
@@ -434,6 +443,8 @@ model Order {
   items           OrderItem[]
   statusHistory   OrderStatusHistory[]
   delivery        Delivery?
+  messages        OrderMessage[]
+  internalNotes   InternalOrderNote[]
 
   @@index([tenantId])
   @@index([branchId])
@@ -471,6 +482,39 @@ model OrderStatusHistory {
   timestamp DateTime     @default(now())
 
   @@index([orderId])
+}
+
+model OrderMessage {
+  id           String      @id @default(cuid())
+  tenantId     String
+  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderId      String
+  order        Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  senderUserId String?
+  sender       User?       @relation(fields: [senderUserId], references: [id], onDelete: SetNull)
+  senderRole   String
+  type         MessageType @default(HUMAN)
+  message      String
+  createdAt    DateTime    @default(now())
+  readAt       DateTime?
+
+  @@index([tenantId, orderId, createdAt])
+  @@index([senderUserId])
+}
+
+model InternalOrderNote {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  note      String
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, orderId, createdAt])
+  @@index([authorId])
 }
 
 model Rider {

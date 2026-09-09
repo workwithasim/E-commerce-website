@@ -32,6 +32,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [assigningOrder, setAssigningOrder] = useState<Order | null>(null);
   const [selectedRiderId, setSelectedRiderId] = useState<string>('');
   const [orderDetail, setOrderDetail] = useState<any>(null);
+  const [chatMessage, setChatMessage] = useState('');
+  const [internalNote, setInternalNote] = useState('');
   const can = (permission: string) => Boolean(authUser?.permissions?.includes(permission) || authUser?.role === 'SUPER_ADMIN' || authUser?.role === 'TENANT_ADMIN');
 
   // Branding Editor state
@@ -118,6 +120,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     } catch (err: any) {
       alert(`Status update failed: ${err.message}`);
     }
+  };
+
+  const openOrderDetail = async (id: string) => {
+    const [detail, messages, internalNotes] = await Promise.all([api.getAdminOrderDetail(id), api.getOrderMessages(id), api.getInternalNotes(id)]);
+    setOrderDetail({ ...detail, messages, internalNotes });
   };
 
   const handleAssignRider = async () => {
@@ -412,7 +419,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                   {/* Order Controls */}
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    {can('orders.internal_view') && <button onClick={async () => { try { setOrderDetail(await api.getAdminOrderDetail(order.id)); } catch (err: any) { alert(err.message); } }} style={{ padding: '6px 10px', borderRadius: '6px', background: '#E2E8F0', border: 'none', fontWeight: 700, fontSize: '0.75rem' }}>Full details</button>}
+                    {can('orders.internal_view') && <button onClick={async () => { try { await openOrderDetail(order.id); } catch (err: any) { alert(err.message); } }} style={{ padding: '6px 10px', borderRadius: '6px', background: '#E2E8F0', border: 'none', fontWeight: 700, fontSize: '0.75rem' }}>Full details</button>}
                     <button
                       disabled={!['PENDING', 'CONFIRMED'].includes(order.status)} onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
                       style={{ padding: '6px 10px', borderRadius: '6px', background: '#FEF3C7', color: '#B45309', border: 'none', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}
@@ -734,6 +741,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
           <section className="tracking-card"><h3>Items</h3>{orderDetail.items.map((item: any) => <p key={item.id}>{item.quantity} × {item.productName} — {orderDetail.financial.currency} {item.totalPrice}{item.instructions ? ` · ${item.instructions}` : ''}</p>)}</section>
           <section className="tracking-card"><h3>Complete timeline</h3><ol>{orderDetail.timeline.map((event: any) => <li key={`${event.type}-${event.id}`}><strong>{event.action.replace(/_/g, ' ')}</strong> · {new Date(event.timestamp).toLocaleString()} · {event.actor?.name || 'System'}{event.actor?.role ? ` (${event.actor.role.replace(/_/g, ' ')})` : ''}</li>)}</ol></section>
+          <section className="tracking-card"><h3>Order conversation</h3>{orderDetail.messages.map((message: any) => <p key={message.id}><strong>{message.type === 'SYSTEM' ? 'System' : message.sender?.name || message.senderRole}:</strong> {message.message}</p>)}<form onSubmit={async event => { event.preventDefault(); if (!chatMessage.trim()) return; await api.sendOrderMessage(orderDetail.id, chatMessage); setChatMessage(''); await openOrderDetail(orderDetail.id); }}><input aria-label="Order message" value={chatMessage} onChange={event => setChatMessage(event.target.value)} maxLength={2000}/><button>Send</button></form></section>
+          <section className="tracking-card"><h3>Internal notes</h3><p>Never returned by customer order APIs.</p>{orderDetail.internalNotes.map((note: any) => <p key={note.id}><strong>{note.author.name}:</strong> {note.note} · {new Date(note.createdAt).toLocaleString()}</p>)}<form onSubmit={async event => { event.preventDefault(); if (!internalNote.trim()) return; await api.addInternalNote(orderDetail.id, internalNote); setInternalNote(''); await openOrderDetail(orderDetail.id); }}><input aria-label="Internal order note" value={internalNote} onChange={event => setInternalNote(event.target.value)} maxLength={2000}/><button>Add note</button></form></section>
         </article>
       </div>}
 

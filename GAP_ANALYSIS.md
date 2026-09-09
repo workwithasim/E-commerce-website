@@ -29,7 +29,7 @@ Assessment date: 2026-09-09. This compares `oveview.md` with the maintained `cli
 - Production migration/backfill tracking for the implemented additive role assignments and permissions.
 - Complete device labels and privileged force-logout controls beyond the implemented self-service session records.
 - Customer addresses.
-- Internal order notes, conversations/messages, order issues, and notifications.
+- Order issues and notifications remain missing. Internal notes and order conversations are now implemented.
 - COD collection/settlement records and complete payment/refund records.
 - Voucher redemption records plus branch/product/category applicability.
 - Additional delivery timestamps, rider zone/profile fields, and branch delivery/business-hours configuration.
@@ -40,14 +40,14 @@ These should be introduced incrementally. Existing `OrderStatusHistory` and `Aud
 
 - COD accountability and settlement endpoints remain separate from implemented rider profiles, history, activity, assignment, and self-availability.
 - Admin customer search/profile/deactivation and customer profile/address/reorder operations.
-- Internal notes, issues, privileged overrides, communication, COD, and audit-query endpoints still need to extend the implemented admin order detail.
+- Issues, privileged overrides, COD, and audit-query endpoints still need to extend the admin order detail. Internal notes and authorized communication are now integrated.
 - Order conversations/messages, notifications, COD reconciliation, payment administration, and voucher-redemption operations.
 - Complete branch/settings/menu-option administration and operational reports.
 
 ## 6. Missing frontend routes and screens
 
 - Role-specific admin/staff/kitchen/branch/rider/platform login URLs now share the unified identity backend. A dedicated `/account` view is still missing.
-- Staff/rider management and complete core order detail/timeline screens are implemented. Customers, dispatch polish, chat, COD/payments, audit, reports, full settings, and full menu-option screens are missing or partial.
+- Staff/rider management, complete core order detail/timeline, customer/rider/admin chat, and internal notes are implemented. Customers, dispatch polish, COD/payments, audit, reports, full settings, and full menu-option screens are missing or partial.
 
 ## 7. Missing permission rules
 
@@ -77,6 +77,6 @@ These should be introduced incrementally. Existing `OrderStatusHistory` and `Aud
 ## Incremental implementation order
 
 1. Authentication/RBAC and the initial staff-management milestone are implemented and automatically verified; complete their pending browser checks.
-2. Extend the new complete admin order view with secure internal notes and communication.
-3. Implement COD reconciliation on the same authorization/audit foundations.
+2. Implement COD reconciliation on the same authorization/audit foundations.
+3. Complete audit coverage/viewing, then transactional voucher limits.
 4. Continue with communication, COD, audit completion, vouchers, editors, reports, and production readiness in the order defined by `oveview.md`.

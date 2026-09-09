@@ -44,7 +44,13 @@ async function main() {
     for(const status of ['ACCEPTED','PICKED_UP','ON_THE_WAY']) assert.equal((await request(`/deliveries/${deliveryId}/status`,users.RIDER,'PATCH',{status})).status,200);
     assert.equal((await request(`/deliveries/${deliveryId}/location`,users.RIDER,'POST',{latitude:33.68,longitude:73.04})).status,200);
     assert.equal((await request(`/deliveries/${deliveryId}/location`,users.CUSTOMER,'POST',{latitude:33.68,longitude:73.04})).status,403);
+    assert.equal((await request(`/orders/${id}/messages`,users.CUSTOMER,'POST',{message:'Please call when outside.'})).status,201);
+    assert.equal((await request(`/orders/${id}/messages`,users.RIDER,'POST',{message:'I am nearby.'})).status,201);
+    const chat=await request(`/orders/${id}/messages`,users.CUSTOMER); assert.equal(chat.status,200); assert.ok(chat.json.data.some((message:any)=>message.message==='I am nearby.'));
+    assert.equal((await request(`/orders/${id}/internal-notes`,users.CUSTOMER)).status,403);
+    assert.equal((await request(`/orders/${id}/internal-notes`,users.TENANT_ADMIN,'POST',{note:'Customer confirmed replacement.'})).status,201);
     assert.equal((await request(`/deliveries/${deliveryId}/status`,users.RIDER,'PATCH',{status:'DELIVERED'})).status,200);
+    assert.equal((await request(`/orders/${id}/messages`,users.RIDER)).status,404);
     const finished=await request(`/orders/${id}`,users.CUSTOMER);
     assert.equal(finished.json.data.status,'DELIVERED'); assert.equal(finished.json.data.delivery.status,'DELIVERED'); assert.equal(finished.json.data.statusHistory.length,7);
     assert.equal(JSON.stringify(finished.json).includes('password'),false);
@@ -57,6 +63,7 @@ async function main() {
     const other=await request('/auth/login',undefined,'POST',{email:outsider.email,password:'TemporaryPassword123'});
     assert.equal((await request(`/orders/${id}`,other.json.data.token)).status,404);
     assert.equal((await request('/orders',other.json.data.token)).json.data.length,0);
+    assert.equal((await request(`/orders/${id}/messages`,other.json.data.token)).status,404);
     const cross=await fetch(base+'/orders',{headers:{'x-tenant-slug':'cheezious',Authorization:`Bearer ${users.CUSTOMER}`}});
     assert.equal(cross.status,403);
     const refreshed=await request('/auth/refresh',undefined,'POST',{refreshToken:sessions.TENANT_ADMIN.refreshToken});
@@ -85,7 +92,7 @@ async function main() {
     assert.equal(riderUpdated.status,200,JSON.stringify(riderUpdated.json)); assert.equal(riderUpdated.json.data.deliveryZone,'Verification zone');
     const riderProfile=await request(`/deliveries/riders/${users.rider.id}`,users.TENANT_ADMIN);
     assert.equal(riderProfile.status,200); assert.ok(riderProfile.json.data.deliveries.length); assert.ok(riderProfile.json.data.activity.length);
-    console.log('PASS: database-backed ordering, isolation, sessions, staff lifecycle/audit, rider management, and staff-only complete order detail/timeline.');
+    console.log('PASS: database-backed ordering, isolation, sessions, staff/rider management, admin detail, authorized order chat, rider cutoff, and internal-note privacy.');
   } finally {
     if(tenantId) { await db.auditLog.deleteMany({where:{tenantId}}); await db.tenant.delete({where:{id:tenantId}}); console.log('Temporary verification tenant removed.'); }
     await db.$disconnect();

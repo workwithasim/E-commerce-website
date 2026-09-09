@@ -7,6 +7,7 @@ import { requireTenantIsolation } from '../middleware/tenant';
 import { orderScope, orderInclude, staffRoles, canTransitionOrder } from '../services/access';
 import { emitOrder } from '../services/events';
 import { requirePermission } from '../services/permissions';
+import { getIO } from '../socket';
 
 const router = Router();
 router.use(authenticateJWT, requireTenantIsolation);
@@ -103,6 +104,61 @@ router.get('/admin/:id', requirePermission('orders.internal_view'), async (req, 
       timeline,
     } });
   } catch (error: any) { res.status(400).json({ success: false, error: { message: error.message } }); }
+});
+
+async function conversationOrder(req: any) {
+  const scope = await orderScope(req.user, req.tenant.id);
+  const order = await prisma.order.findFirst({
+    where: { AND: [scope, { id: req.params.id }] },
+    include: { delivery: { include: { rider: true } }, statusHistory: { orderBy: { timestamp: 'asc' } } },
+  });
+  if (!order) return null;
+  const operationalRole = req.user.roles.some((role: string) => ['SUPER_ADMIN', 'TENANT_ADMIN', 'BRANCH_MANAGER', 'KITCHEN_MANAGER', 'KITCHEN_STAFF', 'DISPATCHER', 'SUPPORT_STAFF'].includes(role));
+  if (!operationalRole && req.user.roles.includes('RIDER') && !['ASSIGNED', 'ACCEPTED', 'PICKED_UP', 'ON_THE_WAY'].includes(order.delivery?.status || '')) return null;
+  return order;
+}
+
+router.get('/:id/messages', requirePermission('communications.view'), async (req, res) => {
+  const order = await conversationOrder(req);
+  if (!order) return res.status(404).json({ success: false, error: { message: 'Conversation not found' } });
+  const messages = await prisma.orderMessage.findMany({
+    where: { tenantId: req.tenant!.id, orderId: order.id },
+    include: { sender: { select: { id: true, name: true } } }, orderBy: { createdAt: 'asc' }, take: 500,
+  });
+  const system = order.statusHistory.map(event => ({ id: `status-${event.id}`, tenantId: req.tenant!.id, orderId: order.id, senderUserId: null, senderRole: 'SYSTEM', sender: null, type: 'SYSTEM', message: `Order ${event.newStatus.toLowerCase().replace(/_/g, ' ')}`, createdAt: event.timestamp, readAt: null }));
+  res.json({ success: true, data: [...system, ...messages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) });
+});
+
+router.post('/:id/messages', requirePermission('communications.respond'), async (req, res) => {
+  const order = await conversationOrder(req);
+  if (!order) return res.status(404).json({ success: false, error: { message: 'Conversation not found' } });
+  const message = typeof req.body.message === 'string' ? req.body.message.trim() : '';
+  if (!message || message.length > 2000) return res.status(400).json({ success: false, error: { message: 'Message must contain 1 to 2000 characters' } });
+  const created = await prisma.orderMessage.create({ data: { tenantId: req.tenant!.id, orderId: order.id, senderUserId: req.user!.id, senderRole: req.user!.roles.join(','), message }, include: { sender: { select: { id: true, name: true } } } });
+  getIO().to(`order:${order.id}`).emit('message:new', created);
+  res.status(201).json({ success: true, data: created });
+});
+
+router.get('/:id/internal-notes', requirePermission('orders.internal_view'), async (req, res) => {
+  const scope = await orderScope(req.user!, req.tenant!.id);
+  const order = await prisma.order.findFirst({ where: { AND: [scope, { id: req.params.id }] }, select: { id: true } });
+  if (!order) return res.status(404).json({ success: false, error: { message: 'Order not found' } });
+  const notes = await prisma.internalOrderNote.findMany({ where: { tenantId: req.tenant!.id, orderId: order.id }, include: { author: { select: { id: true, name: true, role: true } } }, orderBy: { createdAt: 'asc' } });
+  res.json({ success: true, data: notes });
+});
+
+router.post('/:id/internal-notes', requirePermission('orders.internal_view'), async (req, res) => {
+  const scope = await orderScope(req.user!, req.tenant!.id);
+  const order = await prisma.order.findFirst({ where: { AND: [scope, { id: req.params.id }] }, select: { id: true } });
+  if (!order) return res.status(404).json({ success: false, error: { message: 'Order not found' } });
+  const note = typeof req.body.note === 'string' ? req.body.note.trim() : '';
+  if (!note || note.length > 2000) return res.status(400).json({ success: false, error: { message: 'Internal note must contain 1 to 2000 characters' } });
+  const created = await prisma.$transaction(async tx => {
+    const value = await tx.internalOrderNote.create({ data: { tenantId: req.tenant!.id, orderId: order.id, authorId: req.user!.id, note }, include: { author: { select: { id: true, name: true, role: true } } } });
+    await tx.auditLog.create({ data: { tenantId: req.tenant!.id, userId: req.user!.id, action: 'INTERNAL_NOTE_ADDED', entity: 'Order', entityId: order.id } });
+    return value;
+  });
+  res.status(201).json({ success: true, data: created });
 });
 
 router.get('/:id', async (req, res) => {
