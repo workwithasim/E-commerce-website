@@ -18,8 +18,9 @@ Use Node.js 20+ and PostgreSQL. Node 24.14.0 was used for verification.
 1. Install dependencies with `npm ci` in both `client/` and `server/`.
 2. Copy `server/.env.example` to `server/.env` and configure `DATABASE_URL`, `CLIENT_ORIGIN`, and random `JWT_SECRET`/`REFRESH_SECRET` values. Environment files are ignored by Git. Without explicit signing secrets, development uses random process-local secrets and sessions expire when the server restarts.
 3. In `server/`, run `npm run db:generate` and `npm run db:push` for a local development database.
-4. For a new demo database, run `npm run db:seed`. The seed writes demo branding, menus, users, vouchers, and staff memberships. It replaces seeded option groups and banners; do not use it as a production migration.
-5. Run `./start.sh`, or run `npm run dev` separately in `server/` and `client/`.
+4. For an existing local database, run `npm run db:backfill-rbac` once after `db:push`. It adds role assignments from existing tenant users and branch memberships without deleting compatibility fields.
+5. For a new demo database, run `npm run db:seed`. The seed writes demo branding, menus, users, vouchers, staff memberships, and role assignments. It replaces seeded option groups and banners; do not use it as a production migration.
+6. Run `./start.sh`, or run `npm run dev` separately in `server/` and `client/`.
 
 Customer application: `http://localhost:5173/?tenant=cheezious` or `?tenant=savour-foods`.
 API health: `http://localhost:5000/api/health`.
@@ -32,11 +33,16 @@ For an existing database, staff need explicit `BranchStaff` memberships. Kitchen
 
 - Browse menus without signing in; carts and selected branches persist separately for each tenant.
 - Sign in to request a quote, place an order, view personal history, and track an order. Switching tenants signs out non-platform users.
+- Successful login/registration creates a 15-minute access token and a 30-day, one-time refresh token. The stored server token is hashed; refresh rotates it, logout revokes it, and disabled users cannot refresh. Older development sessions created before hashed storage must sign in again.
 - Product options use database IDs and selection constraints. The server calculates the subtotal, discount, tax, delivery fee, and total. Client-supplied prices are ignored.
 - Delivery and pickup use `DELIVERY` and `TAKEAWAY`. COD is the currently implemented payment method. Disabled modes are rejected.
 - Kitchen staff handle their assigned branches. Delivery orders proceed through rider assignment and delivery actions; pickup orders can be marked collected when ready.
 - Riders receive only their own assignments, save availability, and explicitly enable browser geolocation. Sharing requires a secure browser context (HTTPS or localhost), device permission, and an active delivery. Customers see incoming coordinates on an OpenStreetMap embed.
 - Admins manage products, stock, branch opening status, branding, rider dispatch, and basic analytics. Platform revenue is grouped by currency.
+- Tenant admins manage staff from the Staff tab. New employees start inactive with an expiring invitation; development returns a local acceptance path and does not claim email delivery. Assignment changes revoke existing refresh sessions and staff disable immediately blocks authentication/actions.
+- Authorized admins manage rider vehicle, registration, delivery-zone, and branch details from the Riders tab and can inspect delivery history and recent operational activity. This does not add continuous location surveillance or COD settlement behavior.
+- Authorized operations staff can open Full details on an order to see the customer summary, items, financials, kitchen actors/timing, delivery timestamps, payment state, and a chronological history/audit timeline. Customer order APIs do not receive this internal projection.
+- Dedicated entry URLs are available for `/admin/login`, `/staff/login`, `/kitchen`, `/branch`, `/rider/login`, and `/platform/login`; all use the same identity and session backend.
 
 ## Access and real-time behavior
 
@@ -49,7 +55,7 @@ Socket connections authenticate with `{ token, tenantSlug }`. Anonymous clients 
 In `client/`: `npm run build`.
 In `server/`: `npm run build` and `npm test`.
 
-`npm test` runs isolated pricing/authorization/Socket.IO regression checks using database doubles and local HTTP sockets. Both projects' dependencies must be installed.
+`npm test` runs 20 isolated pricing, authorization, RBAC, Socket.IO, and session-lifecycle regression checks using database doubles and local HTTP sockets. Both projects' dependencies must be installed.
 
 With the backend running on port 5000 and the configured local database available, run `npm run test:integration` in `server/`. It creates a temporary tenant, exercises checkout and delivery through HTTP, and removes its temporary business data and audit records in cleanup.
 
@@ -59,6 +65,6 @@ Set `VITE_API_URL` when the frontend and backend are on different origins. Confi
 
 ## Remaining product scope
 
-The PRD is a vision document, not a completed production checklist. Native Android/iOS apps, payment-provider processing/refunds, production migrations and deployment, session refresh/revocation, voucher redemption limits, comprehensive audit coverage, full menu-option/settings editors, and advanced analytics remain future work.
+The PRD is a vision document, not a completed production checklist. Native Android/iOS apps, payment-provider processing/refunds, controlled production migrations and deployment, complete rider administration, voucher redemption limits, comprehensive audit coverage, full menu-option/settings editors, and advanced analytics remain future work.
 
 Browser visual checks and physical-device geolocation were unavailable in this session. See `walkthrough.md` for the manual checklist. Removing `.env` from the current Git index does not remove secrets from earlier commits; any previously shared credentials need rotation and repository-history handling separately.

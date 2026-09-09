@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { api, setToken } from './api';
+import { api, setSession } from './api';
 import { useTenant } from './theme/ThemeProvider';
 import { UserRole } from './types';
 
@@ -12,13 +12,19 @@ export type AuthUser = {
   tenantId?: string | null;
   tenantSlug?: string | null;
   tenantName?: string | null;
+  roles?: UserRole[];
+  permissions?: string[];
+  branchIds?: string[];
 };
 
 interface LoginPageProps {
   onLogin: (user: AuthUser) => void;
+  allowedRoles?: UserRole[];
+  portalTitle?: string;
+  allowRegistration?: boolean;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, allowedRoles, portalTitle, allowRegistration = true }) => {
   const { tenant, branding, currentSlug, switchTenant } = useTenant();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
@@ -51,7 +57,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         setError(result.error?.message || result.error || 'Authentication failed');
       } else {
         const authData = result.data || result;
-        setToken(authData.token);
+        const effectiveRoles: UserRole[] = authData.user.roles || [authData.user.role];
+        if (allowedRoles && !effectiveRoles.some(role => allowedRoles.includes(role))) {
+          setError('This account does not have access to this portal.');
+          return;
+        }
+        setSession(authData.token, authData.refreshToken);
         localStorage.setItem('platform_auth_user', JSON.stringify(authData.user));
         
         // If user belongs to a specific tenant, switch to that tenant
@@ -143,7 +154,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               marginBottom: '24px',
             }}
           >
-            {(['login', 'register'] as const).map((m) => (
+            {(allowRegistration ? ['login', 'register'] as const : ['login'] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => {
@@ -168,6 +179,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               </button>
             ))}
           </div>
+
+          {portalTitle && <p style={{ textAlign: 'center', color: '#475569', fontWeight: 700, margin: '-10px 0 18px' }}>{portalTitle}</p>}
 
           <form onSubmit={handleSubmit}>
             {mode === 'register' && (

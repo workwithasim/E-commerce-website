@@ -4,6 +4,8 @@ export type UserRole =
   | 'BRANCH_MANAGER'
   | 'KITCHEN_MANAGER'
   | 'KITCHEN_STAFF'
+  | 'DISPATCHER'
+  | 'SUPPORT_STAFF'
   | 'RIDER'
   | 'CUSTOMER';
 
@@ -204,6 +206,10 @@ export interface Rider {
   userId: string;
   vehicleType: string;
   vehicleNumber?: string | null;
+  deliveryZone?: string | null;
+  branchId?: string | null;
+  branch?: Branch | null;
+  lastActiveAt?: string | null;
   status: 'OFFLINE' | 'AVAILABLE' | 'BUSY' | 'ON_DELIVERY';
   isAvailable: boolean;
   user: {
@@ -213,6 +219,23 @@ export interface Rider {
     email: string;
   };
   locations?: RiderLocation[];
+  deliveries?: Delivery[];
+  activity?: Array<{ id: string; action: string; entity: string; entityId: string; timestamp: string }>;
+}
+
+export interface StaffMember {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  employeeId?: string | null;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: string;
+  lastLoginAt?: string | null;
+  roleAssignments: Array<{ id: string; role: UserRole; branchId?: string | null; branch?: { id: string; name: string } | null }>;
+  staffInvitation?: { status: string; expiresAt: string; createdAt: string } | null;
+  riderProfile?: Rider | null;
 }
 
 export interface Delivery {

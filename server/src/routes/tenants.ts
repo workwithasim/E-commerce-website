@@ -2,7 +2,8 @@ import { Router, Request, Response } from 'express';
 import * as bcrypt from 'bcryptjs';
 import { UserRole } from '@prisma/client';
 import { prisma } from '../prisma';
-import { authenticateJWT, requireRole } from '../middleware/auth';
+import { authenticateJWT } from '../middleware/auth';
+import { requirePermission } from '../services/permissions';
 
 const router = Router();
 
@@ -65,7 +66,7 @@ router.get('/:slug/public', async (req: Request, res: Response) => {
 });
 
 // ── POST /api/v1/tenants (Super Admin Onboarding Wizard) ────────────────────
-router.post('/', authenticateJWT, requireRole([UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
+router.post('/', authenticateJWT, requirePermission('platform.manage'), async (req: Request, res: Response) => {
   try {
     const {
       name,
@@ -143,7 +144,7 @@ router.post('/', authenticateJWT, requireRole([UserRole.SUPER_ADMIN]), async (re
       // Initial Tenant Admin
       if (adminEmail && adminPassword) {
         const hashedPassword = await bcrypt.hash(adminPassword, 10);
-        await tx.user.create({
+        const admin = await tx.user.create({
           data: {
             tenantId: tenant.id,
             name: adminName || `${name} Admin`,
@@ -152,6 +153,7 @@ router.post('/', authenticateJWT, requireRole([UserRole.SUPER_ADMIN]), async (re
             role: UserRole.TENANT_ADMIN,
           },
         });
+        await tx.roleAssignment.create({ data: { userId: admin.id, tenantId: tenant.id, role: UserRole.TENANT_ADMIN } });
       }
 
       return tenant;
@@ -171,7 +173,7 @@ router.post('/', authenticateJWT, requireRole([UserRole.SUPER_ADMIN]), async (re
 });
 
 // ── PUT /api/v1/tenants/:id/branding (Visual Branding Editor) ──────────────
-router.put('/:id/branding', authenticateJWT, requireRole([UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN]), async (req: Request, res: Response) => {
+router.put('/:id/branding', authenticateJWT, requirePermission('settings.manage'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const {
@@ -190,7 +192,7 @@ router.put('/:id/branding', authenticateJWT, requireRole([UserRole.SUPER_ADMIN, 
     } = req.body;
 
     // Verify tenant ownership for TENANT_ADMIN
-    if (req.user!.role === UserRole.TENANT_ADMIN && req.user!.tenantId !== id) {
+    if (!req.user!.roles.includes(UserRole.SUPER_ADMIN) && req.user!.tenantId !== id) {
       return res.status(403).json({
         success: false,
         error: { code: 'FORBIDDEN', message: 'You can only update your own restaurant branding' },
@@ -234,11 +236,11 @@ router.put('/:id/branding', authenticateJWT, requireRole([UserRole.SUPER_ADMIN, 
 });
 
 // ── PUT /api/v1/tenants/:id/settings (Business Settings & Flags) ────────────
-router.put('/:id/settings', authenticateJWT, requireRole([UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN]), async (req: Request, res: Response) => {
+router.put('/:id/settings', authenticateJWT, requirePermission('settings.manage'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    if (req.user!.role === UserRole.TENANT_ADMIN && req.user!.tenantId !== id) {
+    if (!req.user!.roles.includes(UserRole.SUPER_ADMIN) && req.user!.tenantId !== id) {
       return res.status(403).json({
         success: false,
         error: { code: 'FORBIDDEN', message: 'You can only update your own restaurant settings' },

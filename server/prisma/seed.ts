@@ -661,6 +661,16 @@ async function main() {
       const staff = await prisma.user.findMany({ where: { tenantId, role: { in: ['KITCHEN_STAFF', 'KITCHEN_MANAGER', 'BRANCH_MANAGER'] } } });
       for (const u of staff) await prisma.branchStaff.upsert({ where: { branchId_userId: { branchId: branch.id, userId: u.id } }, update: { role: u.role }, create: { branchId: branch.id, userId: u.id, role: u.role } });
     }
+    const users = await prisma.user.findMany({ where: { tenantId }, include: { branchStaff: true } });
+    for (const user of users) {
+      const branchScoped = ['BRANCH_MANAGER', 'KITCHEN_MANAGER', 'KITCHEN_STAFF', 'DISPATCHER', 'SUPPORT_STAFF'].includes(user.role);
+      const scopes = branchScoped ? user.branchStaff.map(membership => ({ role: membership.role, branchId: membership.branchId })) : [{ role: user.role, branchId: null }];
+      for (const scope of scopes) {
+        if (!await prisma.roleAssignment.findFirst({ where: { userId: user.id, tenantId, role: scope.role, branchId: scope.branchId } })) {
+          await prisma.roleAssignment.create({ data: { userId: user.id, tenantId, role: scope.role, branchId: scope.branchId } });
+        }
+      }
+    }
   }
   console.log('\n================================================================');
   console.log('🎉 Multi-Tenant Seed Finished Successfully!');

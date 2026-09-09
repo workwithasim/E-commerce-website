@@ -65,4 +65,6 @@ Current product decisions:
 - COD is supported. Online payment options are not advertised until provider integration exists.
 - Native applications remain outside this web repair milestone.
 
-Not yet complete: native Android/iOS apps, online payments/refunds, production deployment/migrations, refresh-token lifecycle, voucher redemption limits, complete audit coverage, comprehensive settings/menu-option administration, and advanced analytics. Visual browser and device-location verification is pending; automated API/database checks do not substitute for it.
+Phase A, staff/rider management, and the core complete admin order view are now implemented and automatically verified. The admin order projection reuses existing status/audit data and remains isolated from customer APIs. Browser verification and controlled production migrations remain pending; see `GAP_ANALYSIS.md` and `IMPLEMENTATION.md` for evidence and boundaries.
+
+Not yet complete: native Android/iOS apps, online payments/refunds, production deployment/migrations, complete rider administration, voucher redemption limits, complete audit coverage, comprehensive settings/menu-option administration, and advanced analytics. Visual browser and device-location verification is pending; automated API/database checks do not substitute for it.

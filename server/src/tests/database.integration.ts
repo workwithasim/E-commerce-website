@@ -16,14 +16,14 @@ async function main() {
     tenantId=tenant.id;
     const branch=await db.branch.create({data:{tenantId,name:'Test branch',city:'Test',address:'Test address',phone:'0000000000',minimumOrder:0,deliveryFee:100}});
     const password=await bcrypt.hash('TemporaryPassword123',10);
-    const users:any={};
+    const users:any={}; const sessions:any={};
     for (const role of ['TENANT_ADMIN','CUSTOMER','RIDER','KITCHEN_STAFF'] as const) {
       const email=`${role.toLowerCase()}-${slug}@example.test`;
       const user=await db.user.create({data:{tenantId,role,email,name:role,password}});
       if(role==='RIDER') users.rider=await db.rider.create({data:{tenantId,userId:user.id}});
       if(role==='KITCHEN_STAFF') await db.branchStaff.create({data:{userId:user.id,branchId:branch.id,role}});
       const login=await request('/auth/login',undefined,'POST',{email,password:'TemporaryPassword123'});
-      assert.equal(login.status,200,JSON.stringify(login.json)); users[role]=login.json.data.token;
+      assert.equal(login.status,200,JSON.stringify(login.json)); users[role]=login.json.data.token; sessions[role]=login.json.data;
     }
     const product=await db.product.create({data:{tenantId,name:'Test meal',slug:'meal',basePrice:500,image:'',optionGroups:{create:{tenantId,name:'Size',minSelect:1,maxSelect:1,isRequired:true,options:{create:{name:'Large',priceModifier:100}}}}},include:{optionGroups:{include:{options:true}}}});
     await db.voucher.create({data:{tenantId,code:'TEN',discountType:'PERCENT',discountValue:10,minimumOrder:0}});
@@ -48,13 +48,44 @@ async function main() {
     const finished=await request(`/orders/${id}`,users.CUSTOMER);
     assert.equal(finished.json.data.status,'DELIVERED'); assert.equal(finished.json.data.delivery.status,'DELIVERED'); assert.equal(finished.json.data.statusHistory.length,7);
     assert.equal(JSON.stringify(finished.json).includes('password'),false);
+    assert.equal((await request(`/orders/admin/${id}`,users.CUSTOMER)).status,403);
+    const adminDetail=await request(`/orders/admin/${id}`,users.TENANT_ADMIN);
+    assert.equal(adminDetail.status,200,JSON.stringify(adminDetail.json));
+    assert.equal(adminDetail.json.data.financial.total,1288); assert.ok(adminDetail.json.data.kitchen.preparationDurationMs >= 0);
+    assert.ok(adminDetail.json.data.timeline.some((event:any)=>event.actor?.name==='KITCHEN_STAFF'));
     const outsider=await db.user.create({data:{tenantId,name:'Other customer',email:`other-${slug}@example.test`,password,role:'CUSTOMER'}});
     const other=await request('/auth/login',undefined,'POST',{email:outsider.email,password:'TemporaryPassword123'});
     assert.equal((await request(`/orders/${id}`,other.json.data.token)).status,404);
     assert.equal((await request('/orders',other.json.data.token)).json.data.length,0);
     const cross=await fetch(base+'/orders',{headers:{'x-tenant-slug':'cheezious',Authorization:`Bearer ${users.CUSTOMER}`}});
     assert.equal(cross.status,403);
-    console.log('PASS: database-backed quote, voucher, tax, checkout, kitchen, assignment, GPS, delivery, history, ownership and cross-tenant rejection.');
+    const refreshed=await request('/auth/refresh',undefined,'POST',{refreshToken:sessions.TENANT_ADMIN.refreshToken});
+    assert.equal(refreshed.status,200,JSON.stringify(refreshed.json));
+    assert.notEqual(refreshed.json.data.refreshToken,sessions.TENANT_ADMIN.refreshToken);
+    assert.equal((await request('/auth/refresh',undefined,'POST',{refreshToken:sessions.TENANT_ADMIN.refreshToken})).status,401);
+    assert.equal((await request('/auth/logout',undefined,'POST',{refreshToken:refreshed.json.data.refreshToken})).status,200);
+    assert.equal((await request('/auth/refresh',undefined,'POST',{refreshToken:refreshed.json.data.refreshToken})).status,401);
+    const invited=await request('/staff',users.TENANT_ADMIN,'POST',{name:'Invited kitchen employee',email:`invited-${slug}@example.test`,role:'KITCHEN_STAFF',branchIds:[branch.id],employeeId:'VERIFY-1'});
+    assert.equal(invited.status,201,JSON.stringify(invited.json));
+    const invitationPath=invited.json.data.developmentInvitationPath as string;
+    assert.ok(invitationPath);
+    const invitationToken=new URL(`http://local${invitationPath}`).searchParams.get('token');
+    assert.equal((await request('/staff/accept-invitation',undefined,'POST',{token:invitationToken,password:'InvitedPassword123'})).status,200);
+    const staffLogin=await request('/auth/login',undefined,'POST',{email:`invited-${slug}@example.test`,password:'InvitedPassword123'});
+    assert.equal(staffLogin.status,200,JSON.stringify(staffLogin.json));
+    assert.ok(staffLogin.json.data.user.roles.includes('KITCHEN_STAFF'));
+    const staffList=await request('/staff',users.TENANT_ADMIN);
+    assert.equal(staffList.status,200); assert.ok(staffList.json.data.some((member:any)=>member.id===invited.json.data.id));
+    const changed=await request(`/staff/${invited.json.data.id}`,users.TENANT_ADMIN,'PATCH',{role:'KITCHEN_MANAGER',branchIds:[branch.id]});
+    assert.equal(changed.status,200,JSON.stringify(changed.json));
+    assert.equal((await request(`/staff/${invited.json.data.id}/status`,users.TENANT_ADMIN,'PATCH',{isActive:false})).status,200);
+    assert.equal((await request('/auth/login',undefined,'POST',{email:`invited-${slug}@example.test`,password:'InvitedPassword123'})).status,401);
+    assert.ok(await db.auditLog.findFirst({where:{tenantId,entityId:invited.json.data.id,action:'STAFF_DISABLED'}}));
+    const riderUpdated=await request(`/deliveries/riders/${users.rider.id}`,users.TENANT_ADMIN,'PATCH',{branchId:branch.id,vehicleType:'TEST BIKE',vehicleNumber:'VERIFY-42',deliveryZone:'Verification zone'});
+    assert.equal(riderUpdated.status,200,JSON.stringify(riderUpdated.json)); assert.equal(riderUpdated.json.data.deliveryZone,'Verification zone');
+    const riderProfile=await request(`/deliveries/riders/${users.rider.id}`,users.TENANT_ADMIN);
+    assert.equal(riderProfile.status,200); assert.ok(riderProfile.json.data.deliveries.length); assert.ok(riderProfile.json.data.activity.length);
+    console.log('PASS: database-backed ordering, isolation, sessions, staff lifecycle/audit, rider management, and staff-only complete order detail/timeline.');
   } finally {
     if(tenantId) { await db.auditLog.deleteMany({where:{tenantId}}); await db.tenant.delete({where:{id:tenantId}}); console.log('Temporary verification tenant removed.'); }
     await db.$disconnect();

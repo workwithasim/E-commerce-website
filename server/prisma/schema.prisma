@@ -20,6 +20,8 @@ enum UserRole {
   BRANCH_MANAGER
   KITCHEN_MANAGER
   KITCHEN_STAFF
+  DISPATCHER
+  SUPPORT_STAFF
   RIDER
   CUSTOMER
 }
@@ -81,6 +83,13 @@ enum DiscountType {
   FREE_DELIVERY
 }
 
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
 model Tenant {
   id           String               @id @default(cuid())
   name         String
@@ -106,6 +115,8 @@ model Tenant {
   vouchers     Voucher[]
   banners      Banner[]
   auditLogs    AuditLog[]
+  roleAssignments RoleAssignment[]
+  staffInvitations StaffInvitation[]
 }
 
 model TenantBranding {
@@ -199,6 +210,8 @@ model User {
   phone         String?
   role          UserRole       @default(CUSTOMER)
   isActive      Boolean        @default(true)
+  employeeId    String?
+  lastLoginAt   DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -207,6 +220,8 @@ model User {
   orders        Order[]
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]
+  roleAssignments RoleAssignment[]
+  staffInvitation StaffInvitation?
 
   @@index([tenantId])
 }
@@ -218,9 +233,29 @@ model RefreshToken {
   token     String    @unique
   expiresAt DateTime
   revokedAt DateTime?
+  userAgent String?
+  ip        String?
+  lastUsedAt DateTime @default(now())
   createdAt DateTime  @default(now())
 
   @@index([userId])
+}
+
+model StaffInvitation {
+  id          String           @id @default(cuid())
+  tenantId    String
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId      String           @unique
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash   String           @unique
+  status      InvitationStatus @default(PENDING)
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdById String
+  createdAt   DateTime         @default(now())
+
+  @@index([tenantId, status])
+  @@index([createdById])
 }
 
 model Branch {
@@ -246,6 +281,7 @@ model Branch {
   riders         Rider[]
   deliveries     Delivery[]
   banners        Banner[]
+  roleAssignments RoleAssignment[]
 
   @@index([tenantId])
   @@index([city])
@@ -261,6 +297,27 @@ model BranchStaff {
   createdAt DateTime @default(now())
 
   @@unique([branchId, userId])
+}
+
+// Additive RBAC layer. User.role and BranchStaff remain compatibility fields
+// while existing installations are backfilled and migrated incrementally.
+model RoleAssignment {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role      UserRole
+  branchId  String?
+  branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, tenantId, role, branchId])
+  @@index([tenantId, role])
+  @@index([userId, isActive])
+  @@index([branchId])
 }
 
 model Category {
@@ -426,8 +483,10 @@ model Rider {
   branch        Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
   vehicleType   String          @default("BIKE")
   vehicleNumber String?
+  deliveryZone  String?
   status        RiderStatus     @default(AVAILABLE)
   isAvailable   Boolean         @default(true)
+  lastActiveAt  DateTime?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 

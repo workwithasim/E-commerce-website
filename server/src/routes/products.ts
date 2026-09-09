@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { UserRole } from '@prisma/client';
 import { prisma } from '../prisma';
-import { authenticateJWT, requireRole } from '../middleware/auth';
+import { authenticateJWT } from '../middleware/auth';
 import { requireTenantIsolation } from '../middleware/tenant';
 import { getIO } from '../socket';
+import { requirePermission } from '../services/permissions';
 
 const router = Router();
 
@@ -102,7 +103,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 // ── POST /api/v1/products (Admin Create Product) ─────────────────────
-router.post('/', authenticateJWT, requireTenantIsolation, requireRole([UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
+router.post('/', authenticateJWT, requireTenantIsolation, requirePermission('menu.manage'), async (req: Request, res: Response) => {
   try {
     const tenantId = req.tenant!.id;
     const {
@@ -164,7 +165,7 @@ router.post('/', authenticateJWT, requireTenantIsolation, requireRole([UserRole.
 });
 
 // ── PUT /api/v1/products/:id (Admin Update Product & Stock) ──────────
-router.put('/:id', authenticateJWT, requireTenantIsolation, requireRole([UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
+router.put('/:id', authenticateJWT, requireTenantIsolation, requirePermission('menu.manage'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenant!.id;
@@ -229,7 +230,7 @@ router.put('/:id', authenticateJWT, requireTenantIsolation, requireRole([UserRol
 });
 
 // ── POST /api/v1/products/:id/options (Add Option Group e.g. Size/Crust)
-router.post('/:id/options', authenticateJWT, requireTenantIsolation, requireRole([UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
+router.post('/:id/options', authenticateJWT, requireTenantIsolation, requirePermission('menu.manage'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenant!.id;
@@ -278,7 +279,7 @@ router.post('/:id/options', authenticateJWT, requireTenantIsolation, requireRole
 });
 
 // ── DELETE /api/v1/products/:id ─────────────────────────────────────
-router.delete('/:id', authenticateJWT, requireTenantIsolation, requireRole([UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
+router.delete('/:id', authenticateJWT, requireTenantIsolation, requirePermission('menu.manage'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenant!.id;

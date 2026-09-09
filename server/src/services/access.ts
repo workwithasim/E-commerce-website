@@ -1,9 +1,9 @@
 import { Prisma, UserRole } from '@prisma/client';
 import { prisma } from '../prisma';
 
-export type Actor = { id: string; role: UserRole; tenantId: string | null };
-export const staffRoles: UserRole[] = ['SUPER_ADMIN', 'TENANT_ADMIN', 'BRANCH_MANAGER', 'KITCHEN_MANAGER', 'KITCHEN_STAFF'];
-export const adminRoles: UserRole[] = ['SUPER_ADMIN', 'TENANT_ADMIN', 'BRANCH_MANAGER'];
+export type Actor = { id: string; role: UserRole; roles?: UserRole[]; branchIds?: string[]; tenantId: string | null };
+export const staffRoles: UserRole[] = ['SUPER_ADMIN', 'TENANT_ADMIN', 'BRANCH_MANAGER', 'KITCHEN_MANAGER', 'KITCHEN_STAFF', 'DISPATCHER', 'SUPPORT_STAFF'];
+export const adminRoles: UserRole[] = ['SUPER_ADMIN', 'TENANT_ADMIN', 'BRANCH_MANAGER', 'DISPATCHER'];
 export const publicUser = { id: true, name: true, phone: true } as const;
 export const orderInclude = {
   items: true, branch: true,
@@ -12,12 +12,17 @@ export const orderInclude = {
 };
 
 export async function orderScope(user: Actor, tenantId: string): Promise<Prisma.OrderWhereInput> {
-  if (user.role !== 'SUPER_ADMIN' && user.tenantId !== tenantId) return { id: { in: [] } };
-  if (user.role === 'CUSTOMER') return { tenantId, customerId: user.id };
-  if (user.role === 'RIDER') return { tenantId, delivery: { rider: { userId: user.id } } };
-  if (user.role === 'SUPER_ADMIN' || user.role === 'TENANT_ADMIN') return { tenantId };
-  const staff = await prisma.branchStaff.findMany({ where: { userId: user.id, branch: { tenantId } }, select: { branchId: true } });
-  return { tenantId, branchId: { in: staff.map(s => s.branchId) } };
+  const roles = user.roles || [user.role];
+  if (!roles.includes('SUPER_ADMIN') && user.tenantId !== tenantId) return { id: { in: [] } };
+  if (roles.includes('SUPER_ADMIN') || roles.includes('TENANT_ADMIN')) return { tenantId };
+  if (roles.some(role => staffRoles.includes(role))) {
+    if (user.branchIds) return { tenantId, branchId: { in: user.branchIds } };
+    const staff = await prisma.branchStaff.findMany({ where: { userId: user.id, branch: { tenantId } }, select: { branchId: true } });
+    return { tenantId, branchId: { in: staff.map(s => s.branchId) } };
+  }
+  if (roles.includes('RIDER')) return { tenantId, delivery: { rider: { userId: user.id } } };
+  if (roles.includes('CUSTOMER')) return { tenantId, customerId: user.id };
+  return { id: { in: [] } };
 }
 
 export const orderTransitions: Record<string, string[]> = {
@@ -25,10 +30,11 @@ export const orderTransitions: Record<string, string[]> = {
   CONFIRMED: ['PREPARING', 'CANCELLED'], PREPARING: ['READY', 'CANCELLED'],
   READY: ['DELIVERED', 'CANCELLED'],
 };
-export function canTransitionOrder(oldStatus: string, status: string, mode: string, role: UserRole) {
-  if (!staffRoles.includes(role) || !orderTransitions[oldStatus]?.includes(status)) return false;
+export function canTransitionOrder(oldStatus: string, status: string, mode: string, role: UserRole | UserRole[]) {
+  const roles = Array.isArray(role) ? role : [role];
+  if (!roles.some(value => staffRoles.includes(value) && value !== 'DISPATCHER' && value !== 'SUPPORT_STAFF') || !orderTransitions[oldStatus]?.includes(status)) return false;
   if (status === 'DELIVERED' && mode === 'DELIVERY') return false;
-  if (status === 'CANCELLED' && !adminRoles.includes(role)) return false;
+  if (status === 'CANCELLED' && !roles.some(value => adminRoles.includes(value) && value !== 'DISPATCHER')) return false;
   return true;
 }
 

@@ -2,8 +2,9 @@ import { calculateOrderPricing } from '../services/pricing';
 import { Router, Request, Response } from 'express';
 import { DiscountType, UserRole } from '@prisma/client';
 import { prisma } from '../prisma';
-import { authenticateJWT, requireRole } from '../middleware/auth';
+import { authenticateJWT } from '../middleware/auth';
 import { requireTenantIsolation } from '../middleware/tenant';
+import { requirePermission } from '../services/permissions';
 
 const router = Router();
 
@@ -18,7 +19,7 @@ router.post('/verify', authenticateJWT, requireTenantIsolation, async (req: Requ
 });
 
 // ── GET /api/v1/vouchers (Admin List) ─────────────────────────────────
-router.get('/', authenticateJWT, requireTenantIsolation, requireRole([UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
+router.get('/', authenticateJWT, requireTenantIsolation, requirePermission('promotions.manage'), async (req: Request, res: Response) => {
   try {
     const tenantId = req.tenant!.id;
     const vouchers = await prisma.voucher.findMany({
@@ -39,7 +40,7 @@ router.get('/', authenticateJWT, requireTenantIsolation, requireRole([UserRole.T
 });
 
 // ── POST /api/v1/vouchers (Admin Create Voucher) ──────────────────────
-router.post('/', authenticateJWT, requireTenantIsolation, requireRole([UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
+router.post('/', authenticateJWT, requireTenantIsolation, requirePermission('promotions.manage'), async (req: Request, res: Response) => {
   try {
     const tenantId = req.tenant!.id;
     const { code, discountType, discountValue, minimumOrder, maximumDiscount } = req.body;

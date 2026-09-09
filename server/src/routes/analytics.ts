@@ -1,14 +1,15 @@
 import { Router, Request, Response } from 'express';
 import { UserRole } from '@prisma/client';
 import { prisma } from '../prisma';
-import { authenticateJWT, requireRole } from '../middleware/auth';
+import { authenticateJWT } from '../middleware/auth';
 
 import { requireTenantIsolation } from '../middleware/tenant';
 import { orderScope } from '../services/access';
+import { requirePermission } from '../services/permissions';
 const router = Router();
 
 // ── GET /api/v1/analytics/stats (Tenant Specific Analytics) ─────────
-router.get('/stats', authenticateJWT, requireTenantIsolation, requireRole([UserRole.TENANT_ADMIN, UserRole.BRANCH_MANAGER, UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
+router.get('/stats', authenticateJWT, requireTenantIsolation, requirePermission('reports.view'), async (req: Request, res: Response) => {
   try {
     const tenantId = req.tenant!.id;
     const { branchId } = req.query;
@@ -60,7 +61,7 @@ router.get('/stats', authenticateJWT, requireTenantIsolation, requireRole([UserR
 });
 
 // ── GET /api/v1/analytics/superadmin (Platform-Wide Analytics) ───────
-router.get('/superadmin', authenticateJWT, requireRole([UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
+router.get('/superadmin', authenticateJWT, requirePermission('platform.manage'), async (req: Request, res: Response) => {
   try {
     const totalTenants = await prisma.tenant.count();
     const activeTenants = await prisma.tenant.count({ where: { status: 'ACTIVE' } });

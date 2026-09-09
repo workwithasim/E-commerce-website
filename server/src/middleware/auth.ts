@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { UserRole } from '@prisma/client';
 import { prisma } from '../prisma';
+import { resolveAuthorization } from '../services/permissions';
 
 export const JWT_SECRET = process.env.JWT_SECRET || randomBytes(48).toString('hex');
 export const REFRESH_SECRET = process.env.REFRESH_SECRET || randomBytes(48).toString('hex');
@@ -51,7 +52,7 @@ export async function authenticateJWT(req: Request, res: Response, next: NextFun
       const tenant = await prisma.tenant.findUnique({ where: { id: user.tenantId } });
       if (tenant?.status !== 'ACTIVE') return res.status(403).json({ success: false, error: { message: 'Restaurant is inactive' } });
     }
-    req.user = user;
+    req.user = { ...user, ...await resolveAuthorization(user) };
     next();
   } catch (err) {
     return res.status(401).json({
@@ -73,7 +74,7 @@ export async function optionalJWT(req: Request, res: Response, next: NextFunctio
         select: { id: true, name: true, email: true, role: true, phone: true, tenantId: true, isActive: true },
       });
       if (user && user.isActive) {
-        req.user = user;
+        req.user = { ...user, ...await resolveAuthorization(user) };
       }
     }
   } catch (err) {
@@ -92,11 +93,11 @@ export function requireRole(allowedRoles: UserRole[]) {
     }
 
     // SUPER_ADMIN always has full access
-    if (req.user.role === UserRole.SUPER_ADMIN) {
+    if (req.user.roles.includes(UserRole.SUPER_ADMIN)) {
       return next();
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    if (!req.user.roles.some(role => allowedRoles.includes(role))) {
       return res.status(403).json({
         success: false,
         error: {

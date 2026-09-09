@@ -1,8 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { UserRole } from '@prisma/client';
 import { prisma } from '../prisma';
-import { authenticateJWT, requireRole } from '../middleware/auth';
+import { authenticateJWT } from '../middleware/auth';
 import { requireTenantIsolation } from '../middleware/tenant';
+import { requirePermission } from '../services/permissions';
 
 const router = Router();
 
@@ -33,7 +34,7 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // ── POST /api/v1/categories (Tenant Admin Create) ────────────────────
-router.post('/', authenticateJWT, requireTenantIsolation, requireRole([UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
+router.post('/', authenticateJWT, requireTenantIsolation, requirePermission('menu.manage'), async (req: Request, res: Response) => {
   try {
     const tenantId = req.tenant!.id;
     const { name, image, description } = req.body;
@@ -69,7 +70,7 @@ router.post('/', authenticateJWT, requireTenantIsolation, requireRole([UserRole.
 });
 
 // ── PUT /api/v1/categories/:id ──────────────────────────────────────
-router.put('/:id', authenticateJWT, requireTenantIsolation, requireRole([UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
+router.put('/:id', authenticateJWT, requireTenantIsolation, requirePermission('menu.manage'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenant!.id;
@@ -109,7 +110,7 @@ router.put('/:id', authenticateJWT, requireTenantIsolation, requireRole([UserRol
 });
 
 // ── DELETE /api/v1/categories/:id ───────────────────────────────────
-router.delete('/:id', authenticateJWT, requireTenantIsolation, requireRole([UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
+router.delete('/:id', authenticateJWT, requireTenantIsolation, requirePermission('menu.manage'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenant!.id;

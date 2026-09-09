@@ -1,8 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { UserRole } from '@prisma/client';
 import { prisma } from '../prisma';
-import { authenticateJWT, requireRole } from '../middleware/auth';
+import { authenticateJWT } from '../middleware/auth';
 import { requireTenantIsolation } from '../middleware/tenant';
+import { requirePermission } from '../services/permissions';
 
 const router = Router();
 
@@ -28,7 +29,7 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // ── POST /api/v1/banners (Admin Add Banner) ──────────────────────────
-router.post('/', authenticateJWT, requireTenantIsolation, requireRole([UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
+router.post('/', authenticateJWT, requireTenantIsolation, requirePermission('settings.manage'), async (req: Request, res: Response) => {
   try {
     const tenantId = req.tenant!.id;
     const { title, subtitle, desktopImage, mobileImage, buttonText, buttonUrl, sortOrder } = req.body;

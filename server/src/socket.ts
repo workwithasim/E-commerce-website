@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from './prisma';
 import { JWT_SECRET, TokenPayload } from './middleware/auth';
 import { orderScope } from './services/access';
+import { resolveAuthorization } from './services/permissions';
 
 let ioInstance: SocketIOServer;
 export function initSocketIO(server: HttpServer) {
@@ -18,7 +19,7 @@ export function initSocketIO(server: HttpServer) {
         const payload = jwt.verify(token, JWT_SECRET) as TokenPayload;
         const user = await prisma.user.findUnique({ where: { id: payload.userId } });
         if (!user?.isActive || (user.role !== 'SUPER_ADMIN' && user.tenantId !== tenant.id)) throw new Error('Access denied');
-        socket.data.user = { id: user.id, role: user.role, tenantId: user.tenantId };
+        socket.data.user = { id: user.id, role: user.role, tenantId: user.tenantId, ...await resolveAuthorization(user) };
         socket.data.expiresAt = (payload as any).exp * 1000;
       }
       next();
@@ -33,11 +34,11 @@ export function initSocketIO(server: HttpServer) {
     socket.on('disconnect', () => { if (expiry) clearTimeout(expiry); });
     if (user) {
       try {
-        if (['SUPER_ADMIN', 'TENANT_ADMIN'].includes(user.role)) socket.join(`ops:${tenantId}`);
-        else if (['BRANCH_MANAGER', 'KITCHEN_MANAGER', 'KITCHEN_STAFF'].includes(user.role)) {
-          const branches = await prisma.branchStaff.findMany({ where: { userId: user.id, branch: { tenantId } } });
-          for (const b of branches) socket.join(`kitchen:${b.branchId}`);
-        } else if (user.role === 'RIDER') {
+        if (user.roles.some((role: string) => ['SUPER_ADMIN', 'TENANT_ADMIN'].includes(role))) socket.join(`ops:${tenantId}`);
+        else if (user.roles.some((role: string) => ['BRANCH_MANAGER', 'KITCHEN_MANAGER', 'KITCHEN_STAFF', 'DISPATCHER', 'SUPPORT_STAFF'].includes(role))) {
+          for (const branchId of user.branchIds) socket.join(`kitchen:${branchId}`);
+        }
+        if (user.roles.includes('RIDER')) {
           const rider = await prisma.rider.findUnique({ where: { userId: user.id } });
           if (rider) socket.join(`rider:${rider.id}`);
         }
@@ -48,7 +49,7 @@ export function initSocketIO(server: HttpServer) {
         if (!user || typeof id !== 'string') throw new Error('Access denied');
         const active = await prisma.user.findUnique({ where: { id: user.id } });
         if (!active?.isActive) throw new Error('Access denied');
-        const scope = await orderScope(active, tenantId);
+        const scope = await orderScope({ ...active, ...await resolveAuthorization(active) }, tenantId);
         const order = await prisma.order.findFirst({ where: { AND: [scope, { OR: [{ id }, { orderNumber: id }] }] } });
         if (!order) throw new Error('Access denied');
         socket.join(`order:${order.id}`);

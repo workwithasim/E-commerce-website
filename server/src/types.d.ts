@@ -1,4 +1,5 @@
 import { Tenant, TenantBranding, TenantSettings, UserRole } from '@prisma/client';
+import { Permission } from './services/permissions';
 
 declare global {
   namespace Express {
@@ -14,6 +15,9 @@ declare global {
         role: UserRole;
         tenantId: string | null;
         phone?: string | null;
+        roles: UserRole[];
+        permissions: Permission[];
+        branchIds: string[];
       };
     }
   }

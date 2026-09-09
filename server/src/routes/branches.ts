@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { UserRole } from '@prisma/client';
 import { prisma } from '../prisma';
-import { authenticateJWT, requireRole } from '../middleware/auth';
+import { authenticateJWT } from '../middleware/auth';
 import { requireTenantIsolation } from '../middleware/tenant';
 import { getIO } from '../socket';
+import { hasBranchAccess, requirePermission } from '../services/permissions';
 
 const router = Router();
 
@@ -36,7 +37,7 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // ── PATCH /api/v1/branches/:id/toggle (Toggle Open/Closed) ───────────
-router.patch('/:id/toggle', authenticateJWT, requireTenantIsolation, requireRole([UserRole.TENANT_ADMIN, UserRole.BRANCH_MANAGER, UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
+router.patch('/:id/toggle', authenticateJWT, requireTenantIsolation, requirePermission('branches.manage'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenant!.id;
@@ -52,7 +53,7 @@ router.patch('/:id/toggle', authenticateJWT, requireTenantIsolation, requireRole
       });
     }
 
-    if (req.user!.role === 'BRANCH_MANAGER' && !await prisma.branchStaff.findFirst({ where: { userId: req.user!.id, branchId: id } })) return res.status(403).json({ success: false, error: { message: 'Branch access denied' } });
+    if (!hasBranchAccess(req.user!, id)) return res.status(403).json({ success: false, error: { message: 'Branch access denied' } });
     const updated = await prisma.branch.update({
       where: { id },
       data: { isOpen: !branch.isOpen },
@@ -78,7 +79,7 @@ router.patch('/:id/toggle', authenticateJWT, requireTenantIsolation, requireRole
 });
 
 // ── POST /api/v1/branches (Admin Add Branch) ─────────────────────────
-router.post('/', authenticateJWT, requireTenantIsolation, requireRole([UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN]), async (req: Request, res: Response) => {
+router.post('/', authenticateJWT, requireTenantIsolation, requirePermission('settings.manage'), async (req: Request, res: Response) => {
   try {
     const tenantId = req.tenant!.id;
     const { name, city, address, phone, openingHours, deliveryFee, minimumOrder, latitude, longitude } = req.body;

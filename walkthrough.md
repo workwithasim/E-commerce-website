@@ -3,8 +3,8 @@
 ## Completed automated checks
 
 - Frontend production build and backend TypeScript build.
-- 13 regression tests: authoritative pricing, required/foreign/duplicate options, invalid quantities, missing branches, unsupported order modes, delivery discounts, voucher expiry/minimums, status transitions, anonymous access, tenant mismatch, customer ownership, rider ownership, branch scope, and Socket.IO room isolation.
-- Database-backed verification using a temporary tenant: signed-in checkout with options, percentage voucher and tax; kitchen preparation; rider assignment and acceptance; pickup; on-the-way; location update; delivery; status history; password-field exclusion; separate-customer and cross-tenant rejection.
+- 20 regression tests: the previous pricing, lifecycle, ownership, branch, Socket.IO, and session checks plus combined-role permissions, cross-tenant role-assignment rejection, normalized tenant-admin assignment, assigned-branch scope, and support/payment separation.
+- Database-backed verification using a temporary tenant: the ordering/delivery/ownership/session flow plus staff invitation, password activation, staff login, role/branch change, deactivation rejection, refresh revocation, and staff audit creation.
 - Backend startup and PostgreSQL health.
 
 ## Manual browser checks still pending
@@ -21,5 +21,10 @@ No browser was connected to the automation runtime. These are checks to perform,
 8. Mark delivered. Confirm order and delivery statuses agree and the customer history includes the transition.
 9. Sign in as another customer. Confirm the previous customer's order is inaccessible.
 10. Check keyboard navigation, dialog dismissal, mobile controls, and location-permission denial.
+11. Leave a signed-in browser open past access-token expiry. Confirm the next API request refreshes once without losing the active view; then log out and confirm the revoked refresh token cannot restore the session.
+12. Visit each role-specific login URL and verify an account without the required role is rejected before a session is stored.
+13. As tenant admin, create an invited kitchen employee, open the development invitation path, set a password, sign in through `/staff/login`, change branches/role, then deactivate the employee and confirm access is denied.
+14. Open the Riders tab, edit a rider's branch/vehicle/registration/zone, save, and confirm delivery history and recent activity render. This browser check is pending because no connected browser was discovered.
+15. Open an admin order's Full details dialog. Verify customer/items/financial/kitchen/rider/payment/timeline sections, keyboard focus/dismissal, and narrow-screen layout. Confirm a customer request to `/api/v1/orders/admin/:id` receives 403. API authorization is verified; visual behavior remains pending.
 
 Use separate browser profiles for customer, kitchen, and rider sessions. The demo seed grants kitchen staff an explicit branch membership; orders from another branch belong to that branch's staff.

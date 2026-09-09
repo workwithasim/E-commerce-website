@@ -3,6 +3,8 @@ import { api, socket } from '../api';
 import { Product, Category, Order, AnalyticsStats, Branch, Rider } from '../types';
 import { AuthUser } from '../LoginPage';
 import { useTenant } from '../theme/ThemeProvider';
+import { StaffManagement } from './StaffManagement';
+import { RiderManagement } from './RiderManagement';
 
 interface AdminDashboardProps {
   onBackToStore?: () => void;
@@ -17,7 +19,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   authUser,
 }) => {
   const { tenant, branding, settings, refreshTenant } = useTenant();
-  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'branding' | 'branches' | 'analytics'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'staff' | 'riders' | 'products' | 'branding' | 'branches' | 'analytics'>('orders');
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -29,6 +31,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [assigningOrder, setAssigningOrder] = useState<Order | null>(null);
   const [selectedRiderId, setSelectedRiderId] = useState<string>('');
+  const [orderDetail, setOrderDetail] = useState<any>(null);
+  const can = (permission: string) => Boolean(authUser?.permissions?.includes(permission) || authUser?.role === 'SUPER_ADMIN' || authUser?.role === 'TENANT_ADMIN');
 
   // Branding Editor state
   const [brandForm, setBrandForm] = useState({
@@ -239,10 +243,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div style={{ display: 'flex', gap: '6px', background: '#F1F5F9', padding: '4px', borderRadius: '10px' }}>
           {[
             { id: 'orders', label: `📦 Orders (${orders.length})` },
-            { id: 'products', label: `🍔 Menu (${products.length})` },
-            { id: 'branding', label: `🎨 Visual Branding` },
-            { id: 'branches', label: `📍 Branches (${branches.length})` },
-            { id: 'analytics', label: `📊 Revenue Stats` },
+            ...(can('staff.view') ? [{ id: 'staff', label: '👥 Staff' }] : []),
+            ...(can('riders.view') ? [{ id: 'riders', label: `🛵 Riders (${riders.length})` }] : []),
+            ...(can('menu.manage') ? [{ id: 'products', label: `🍔 Menu (${products.length})` }] : []),
+            ...(can('settings.manage') ? [{ id: 'branding', label: `🎨 Visual Branding` }] : []),
+            ...(can('branches.view') ? [{ id: 'branches', label: `📍 Branches (${branches.length})` }] : []),
+            ...(can('reports.view') ? [{ id: 'analytics', label: `📊 Revenue Stats` }] : []),
           ].map((tab) => (
             <button
               key={tab.id}
@@ -304,6 +310,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       {/* Main Content Area */}
       <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '28px 24px' }}>
+        {activeTab === 'staff' && can('staff.view') && <StaffManagement branches={branches} canDisable={can('staff.disable')} />}
+        {activeTab === 'riders' && can('riders.view') && <RiderManagement initialRiders={riders} branches={branches} canManage={can('riders.manage')} reload={loadData} />}
         {/* TAB 1: ORDERS */}
         {activeTab === 'orders' && (
           <div>
@@ -404,6 +412,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                   {/* Order Controls */}
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {can('orders.internal_view') && <button onClick={async () => { try { setOrderDetail(await api.getAdminOrderDetail(order.id)); } catch (err: any) { alert(err.message); } }} style={{ padding: '6px 10px', borderRadius: '6px', background: '#E2E8F0', border: 'none', fontWeight: 700, fontSize: '0.75rem' }}>Full details</button>}
                     <button
                       disabled={!['PENDING', 'CONFIRMED'].includes(order.status)} onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
                       style={{ padding: '6px 10px', borderRadius: '6px', background: '#FEF3C7', color: '#B45309', border: 'none', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}
@@ -713,6 +722,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
       </main>
+
+      {orderDetail && <div role="dialog" aria-modal="true" aria-label={`Order ${orderDetail.orderNumber} details`} onClick={() => setOrderDetail(null)} style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(15,23,42,.75)', padding: 24, overflow: 'auto' }}>
+        <article onClick={event => event.stopPropagation()} style={{ maxWidth: 1000, margin: '0 auto', background: '#fff', borderRadius: 16, padding: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}><div><h2 style={{ margin: 0 }}>Order #{orderDetail.orderNumber}</h2><p>{orderDetail.branch?.name || 'No branch'} · {new Date(orderDetail.createdAt).toLocaleString()}</p></div><button aria-label="Close order details" onClick={() => setOrderDetail(null)}>✕</button></div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 14 }}>
+            <section className="tracking-card"><h3>Customer</h3><p>{orderDetail.customer?.name || orderDetail.customerName}</p><p>{orderDetail.customer?.email || 'No email'} · {orderDetail.customerPhone}</p><p>{orderDetail.deliveryAddress || 'Pickup'} {orderDetail.landmark || ''}</p><p>{orderDetail.previousOrderCount} previous orders</p></section>
+            <section className="tracking-card"><h3>Financial</h3><p>Subtotal: {orderDetail.financial.currency} {orderDetail.financial.subtotal}</p><p>Discount: {orderDetail.financial.discount} · Tax: {orderDetail.financial.tax} · Delivery: {orderDetail.financial.deliveryFee}</p><p><strong>Total: {orderDetail.financial.currency} {orderDetail.financial.total}</strong></p><p>{orderDetail.paymentMethod} · {orderDetail.paymentStatus} · Outstanding {orderDetail.financial.outstandingAmount}</p></section>
+            <section className="tracking-card"><h3>Kitchen</h3><p>Received: {new Date(orderDetail.kitchen.receivedAt).toLocaleString()}</p><p>Started: {orderDetail.kitchen.preparationStarted ? `${new Date(orderDetail.kitchen.preparationStarted.timestamp).toLocaleString()} by ${orderDetail.kitchen.preparationStarted.actor?.name || 'Unknown'}` : 'Not started'}</p><p>Ready: {orderDetail.kitchen.ready ? `${new Date(orderDetail.kitchen.ready.timestamp).toLocaleString()} by ${orderDetail.kitchen.ready.actor?.name || 'Unknown'}` : 'Not ready'}</p><p>Preparation: {orderDetail.kitchen.preparationDurationMs == null ? 'Unavailable' : `${Math.round(orderDetail.kitchen.preparationDurationMs / 60000)} minutes`}</p></section>
+            <section className="tracking-card"><h3>Delivery</h3>{orderDetail.deliveryDetail ? <><p>{orderDetail.deliveryDetail.rider?.user?.name || 'Unassigned'} · {orderDetail.deliveryDetail.status}</p><p>Assigned: {orderDetail.deliveryDetail.assignedAt ? new Date(orderDetail.deliveryDetail.assignedAt).toLocaleString() : '—'}</p><p>Accepted: {orderDetail.deliveryDetail.acceptedAt ? new Date(orderDetail.deliveryDetail.acceptedAt).toLocaleString() : '—'}</p><p>Picked up: {orderDetail.deliveryDetail.pickedUpAt ? new Date(orderDetail.deliveryDetail.pickedUpAt).toLocaleString() : '—'}</p><p>Delivered: {orderDetail.deliveryDetail.deliveredAt ? new Date(orderDetail.deliveryDetail.deliveredAt).toLocaleString() : '—'}</p></> : <p>Pickup order</p>}</section>
+          </div>
+          <section className="tracking-card"><h3>Items</h3>{orderDetail.items.map((item: any) => <p key={item.id}>{item.quantity} × {item.productName} — {orderDetail.financial.currency} {item.totalPrice}{item.instructions ? ` · ${item.instructions}` : ''}</p>)}</section>
+          <section className="tracking-card"><h3>Complete timeline</h3><ol>{orderDetail.timeline.map((event: any) => <li key={`${event.type}-${event.id}`}><strong>{event.action.replace(/_/g, ' ')}</strong> · {new Date(event.timestamp).toLocaleString()} · {event.actor?.name || 'System'}{event.actor?.role ? ` (${event.actor.role.replace(/_/g, ' ')})` : ''}</li>)}</ol></section>
+        </article>
+      </div>}
 
       {/* Assign Rider Modal */}
       {assigningOrder && (

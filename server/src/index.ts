@@ -17,6 +17,7 @@ import deliveryRoutes from './routes/deliveries';
 import voucherRoutes from './routes/vouchers';
 import bannerRoutes from './routes/banners';
 import analyticsRoutes from './routes/analytics';
+import staffRoutes from './routes/staff';
 
 dotenv.config();
 
@@ -56,6 +57,7 @@ app.get('/api/health', async (req: Request, res: Response) => {
 app.use((req, res, next) => {
   if (
     req.path.endsWith('/auth/login') || req.path.endsWith('/auth/me') ||
+    req.path.endsWith('/auth/refresh') || req.path.endsWith('/auth/logout') ||
     req.path === '/api/health' ||
     req.path === '/api/v1/health' ||
     (req.path === '/api/v1/tenants' && req.method === 'GET') ||
@@ -78,6 +80,7 @@ app.use('/api/v1/deliveries', deliveryRoutes);
 app.use('/api/v1/vouchers', voucherRoutes);
 app.use('/api/v1/banners', bannerRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/staff', staffRoutes);
 
 // ── BACKWARDS COMPATIBILITY ALIASES ────────────────────────────────
 app.use('/api/auth', authRoutes);
