@@ -17,11 +17,11 @@ async function main() {
     const branch=await db.branch.create({data:{tenantId,name:'Test branch',city:'Test',address:'Test address',phone:'0000000000',minimumOrder:0,deliveryFee:100}});
     const password=await bcrypt.hash('TemporaryPassword123',10);
     const users:any={}; const sessions:any={};
-    for (const role of ['TENANT_ADMIN','CUSTOMER','RIDER','KITCHEN_STAFF'] as const) {
+    for (const role of ['TENANT_ADMIN','CUSTOMER','RIDER','KITCHEN_STAFF','SUPPORT_STAFF'] as const) {
       const email=`${role.toLowerCase()}-${slug}@example.test`;
       const user=await db.user.create({data:{tenantId,role,email,name:role,password}});
       if(role==='RIDER') users.rider=await db.rider.create({data:{tenantId,userId:user.id}});
-      if(role==='KITCHEN_STAFF') await db.branchStaff.create({data:{userId:user.id,branchId:branch.id,role}});
+      if(role==='KITCHEN_STAFF' || role==='SUPPORT_STAFF') await db.branchStaff.create({data:{userId:user.id,branchId:branch.id,role}});
       const login=await request('/auth/login',undefined,'POST',{email,password:'TemporaryPassword123'});
       assert.equal(login.status,200,JSON.stringify(login.json)); users[role]=login.json.data.token; sessions[role]=login.json.data;
     }
@@ -44,6 +44,14 @@ async function main() {
     for(const status of ['ACCEPTED','PICKED_UP','ON_THE_WAY']) assert.equal((await request(`/deliveries/${deliveryId}/status`,users.RIDER,'PATCH',{status})).status,200);
     assert.equal((await request(`/deliveries/${deliveryId}/location`,users.RIDER,'POST',{latitude:33.68,longitude:73.04})).status,200);
     assert.equal((await request(`/deliveries/${deliveryId}/location`,users.CUSTOMER,'POST',{latitude:33.68,longitude:73.04})).status,403);
+    const codBefore=await db.codRecord.findUniqueOrThrow({where:{orderId:id}}); assert.equal(codBefore.expectedAmount,1288); assert.equal(codBefore.status,'PENDING_COLLECTION');
+    assert.equal((await request(`/deliveries/${deliveryId}/status`,users.RIDER,'PATCH',{status:'DELIVERED'})).status,409);
+    assert.equal((await request(`/payments/cod/${id}/collect`,users.CUSTOMER,'POST',{amount:1288})).status,403);
+    const collected=await request(`/payments/cod/${id}/collect`,users.RIDER,'POST',{amount:1288}); assert.equal(collected.status,200,JSON.stringify(collected.json)); assert.equal(collected.json.data.status,'COLLECTED_BY_RIDER');
+    assert.equal((await request(`/payments/cod/${id}/collect`,users.RIDER,'POST',{amount:1288})).status,409);
+    assert.equal((await request(`/payments/cod/${id}/settlement`,users.SUPPORT_STAFF,'PATCH',{status:'SETTLED',receivedAmount:1288})).status,403);
+    assert.equal((await request(`/payments/cod/${id}/settlement`,users.TENANT_ADMIN,'PATCH',{status:'PENDING_SETTLEMENT',receivedAmount:1288})).status,200);
+    const settled=await request(`/payments/cod/${id}/settlement`,users.TENANT_ADMIN,'PATCH',{status:'SETTLED',receivedAmount:1288}); assert.equal(settled.status,200,JSON.stringify(settled.json)); assert.equal(settled.json.data.differenceAmount,0);
     assert.equal((await request(`/orders/${id}/messages`,users.CUSTOMER,'POST',{message:'Please call when outside.'})).status,201);
     assert.equal((await request(`/orders/${id}/messages`,users.RIDER,'POST',{message:'I am nearby.'})).status,201);
     const chat=await request(`/orders/${id}/messages`,users.CUSTOMER); assert.equal(chat.status,200); assert.ok(chat.json.data.some((message:any)=>message.message==='I am nearby.'));
@@ -92,7 +100,9 @@ async function main() {
     assert.equal(riderUpdated.status,200,JSON.stringify(riderUpdated.json)); assert.equal(riderUpdated.json.data.deliveryZone,'Verification zone');
     const riderProfile=await request(`/deliveries/riders/${users.rider.id}`,users.TENANT_ADMIN);
     assert.equal(riderProfile.status,200); assert.ok(riderProfile.json.data.deliveries.length); assert.ok(riderProfile.json.data.activity.length);
-    console.log('PASS: database-backed ordering, isolation, sessions, staff/rider management, admin detail, authorized order chat, rider cutoff, and internal-note privacy.');
+    assert.ok(await db.auditLog.findFirst({where:{tenantId,entityId:codBefore.id,action:'COD_COLLECTED'}}));
+    assert.ok(await db.auditLog.findFirst({where:{tenantId,entityId:codBefore.id,action:'COD_SETTLEMENT_CHANGED'}}));
+    console.log('PASS: database-backed ordering, isolation, sessions, staff/rider management, admin detail, secure chat/internal notes, and COD collection/settlement accountability.');
   } finally {
     if(tenantId) { await db.auditLog.deleteMany({where:{tenantId}}); await db.tenant.delete({where:{id:tenantId}}); console.log('Temporary verification tenant removed.'); }
     await db.$disconnect();

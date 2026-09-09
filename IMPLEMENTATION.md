@@ -32,14 +32,16 @@ Phase A is implemented and automatically verified. Manual browser verification o
 - [x] Invitation acceptance/password creation, role and multi-branch assignment changes, staff deactivation/reactivation, refresh-session revocation, and append-only audit entries.
 - [x] Rider creation through staff management creates an offline rider profile scoped to an authorized branch.
 - [x] Rider profile editor for branch, vehicle, registration, and delivery zone, with delivery history and recent operational activity.
-- [ ] COD accountability belongs to Phase E; staff/rider UI visual polish and browser verification remain pending.
+- [x] Rider profiles expose COD delivery history, while collection and settlement accountability is implemented in Phase E.
+- [ ] Staff/rider UI visual polish and browser verification remain pending.
 
 ### Phase C — Complete admin order view
 
 - [x] Staff-only, tenant/branch-scoped order-detail API and admin dialog.
 - [x] Customer/account summary, items, financial breakdown, kitchen actors/timing, rider/delivery timestamps, payment state, previous-order count, and one chronological timeline composed from existing status history and audit records.
 - [x] Database integration verifies authorized admin access, customer rejection, totals, preparation duration, and actor visibility.
-- [ ] Internal notes, communication, COD settlement, issues, and manual override sections depend on their later dedicated phases. Browser layout/keyboard verification remains pending.
+- [x] Internal notes, communication, and COD accountability now extend the same order detail in Phases D and E.
+- [ ] Issues, manual overrides, and browser layout/keyboard verification remain pending.
 
 ### Phase D — Customer/admin/rider communication
 
@@ -49,6 +51,16 @@ Phase A is implemented and automatically verified. Manual browser verification o
 - [x] Customer tracking, rider assignment, and admin order-detail chat interfaces.
 - [x] Staff-only internal order notes with audit entries; customer APIs and note endpoints do not expose them.
 - [ ] Read receipts, conversation moderation tools, and browser/realtime visual verification.
+
+### Phase E — COD reconciliation
+
+- [x] Every new COD order creates a tenant-scoped accountability record transactionally from the server-authoritative total.
+- [x] Only the assigned rider can record active-delivery collection; amount differences become disputes and exact collection marks the order paid.
+- [x] Duplicate collection is rejected atomically, and COD delivery completion is blocked until collection is recorded.
+- [x] Payment managers can mark pending settlement, settle, or dispute with restaurant-received amount, actors, timestamps, differences, and a required dispute reason.
+- [x] Collection and settlement changes create append-only audit entries and emit through the existing private order room.
+- [x] Rider and admin order views expose the permitted COD workflow; customer order APIs do not receive staff accountability fields.
+- [ ] Browser/device verification and a dedicated tenant-wide COD dashboard remain pending.
 
 ## Verification log
 
@@ -62,6 +74,7 @@ Phase A is implemented and automatically verified. Manual browser verification o
 - Session lifecycle increment: 16 server tests pass, including refresh-token hashing, successful one-time rotation, reuse rejection, logout revocation, and disabled-user rejection. Server and client production builds pass. The database-backed integration flow also verifies persisted refresh rotation, reuse rejection, and logout revocation. Manual browser expiry behavior remains pending.
 - RBAC/staff/rider/admin-order increment: 20 server tests pass. New coverage verifies combined roles, cross-tenant assignment rejection, assigned-branch order scope, and support/payment separation. The PostgreSQL-backed flow verifies staff lifecycle/audit, rider management, and the staff-only complete order projection/timeline while rejecting customer access. The local additive schema and nine existing tenant users were backfilled successfully.
 - Communication increment: server/client builds and the 20-test regression suite pass. The PostgreSQL-backed flow verifies customer and active assigned-rider messaging, customer visibility of rider replies, unrelated-customer denial, rider cutoff after delivery, customer denial of internal notes, and audited admin note creation.
+- COD reconciliation increment: server/client builds and all 20 regression tests pass. The PostgreSQL-backed flow verifies the expected server total, pre-collection delivery block, assigned-rider collection, customer denial, duplicate protection, support-staff settlement denial, admin settlement transitions, paid state, and audit entries.
 - Local secrets: `server/.env` was removed from the Git index while retaining the local file. Historical commits are unaffected. The example environment file now contains placeholders and the correct origin/secret settings.
 
 ## Remaining verification and future scope
@@ -69,4 +82,4 @@ Phase A is implemented and automatically verified. Manual browser verification o
 - [ ] Browser visual/keyboard/mobile checks and physical-device geolocation permissions (no browser connected in this session).
 - [ ] Native Android/iOS applications and payment-provider processing/refunds.
 - [ ] Browser verification of role-specific portals and staff/rider forms (browser discovery returned no connected browser).
-- [ ] Controlled production migration/removal plan for compatibility role fields, complete rider management, voucher redemption limits, complete audit coverage, full settings/menu-option editors, and advanced analytics.
+- [ ] Controlled production migration/removal plan for compatibility role fields, voucher redemption limits, complete audit coverage, full settings/menu-option editors, and advanced analytics.

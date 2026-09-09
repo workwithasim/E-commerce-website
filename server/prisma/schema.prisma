@@ -95,6 +95,14 @@ enum MessageType {
   SYSTEM
 }
 
+enum CodStatus {
+  PENDING_COLLECTION
+  COLLECTED_BY_RIDER
+  PENDING_SETTLEMENT
+  SETTLED
+  DISPUTED
+}
+
 model Tenant {
   id           String               @id @default(cuid())
   name         String
@@ -124,6 +132,7 @@ model Tenant {
   staffInvitations StaffInvitation[]
   messages     OrderMessage[]
   internalNotes InternalOrderNote[]
+  codRecords   CodRecord[]
 }
 
 model TenantBranding {
@@ -231,6 +240,8 @@ model User {
   staffInvitation StaffInvitation?
   sentMessages OrderMessage[]
   internalNotes InternalOrderNote[]
+  codCollections CodRecord[] @relation("CodCollector")
+  codSettlements CodRecord[] @relation("CodReceiver")
 
   @@index([tenantId])
 }
@@ -445,6 +456,7 @@ model Order {
   delivery        Delivery?
   messages        OrderMessage[]
   internalNotes   InternalOrderNote[]
+  codRecord       CodRecord?
 
   @@index([tenantId])
   @@index([branchId])
@@ -515,6 +527,32 @@ model InternalOrderNote {
 
   @@index([tenantId, orderId, createdAt])
   @@index([authorId])
+}
+
+model CodRecord {
+  id               String    @id @default(cuid())
+  tenantId         String
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderId          String    @unique
+  order            Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status           CodStatus @default(PENDING_COLLECTION)
+  expectedAmount   Float
+  collectedAmount  Float?
+  collectedById    String?
+  collectedBy      User?     @relation("CodCollector", fields: [collectedById], references: [id], onDelete: SetNull)
+  collectedAt      DateTime?
+  receivedAmount   Float?
+  receivedById     String?
+  receivedBy       User?     @relation("CodReceiver", fields: [receivedById], references: [id], onDelete: SetNull)
+  settledAt        DateTime?
+  differenceAmount Float?
+  disputeReason    String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([tenantId, status])
+  @@index([collectedById])
+  @@index([receivedById])
 }
 
 model Rider {

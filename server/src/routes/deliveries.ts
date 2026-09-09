@@ -88,7 +88,7 @@ router.post('/assign', requirePermission('riders.assign'), async (req, res) => {
 router.get('/assigned', requirePermission('delivery.view'), async (req, res) => {
   try {
     if (!req.user!.roles.includes('RIDER')) return res.status(403).json({ success: false, error: { message: 'Rider account required' } });
-    const deliveries = await prisma.delivery.findMany({ where: { tenantId: req.tenant!.id, rider: { userId: req.user!.id } }, include: { order: { include: orderInclude } }, orderBy: { assignedAt: 'desc' }, take: 100 });
+    const deliveries = await prisma.delivery.findMany({ where: { tenantId: req.tenant!.id, rider: { userId: req.user!.id } }, include: { order: { include: { ...orderInclude, codRecord: { select: { id: true, status: true, expectedAmount: true, collectedAmount: true, collectedAt: true } } } } }, orderBy: { assignedAt: 'desc' }, take: 100 });
     res.json({ success: true, data: deliveries });
   } catch { res.status(500).json({ success: false, error: { message: 'Unable to load assignments' } }); }
 });
@@ -99,6 +99,10 @@ router.patch('/:id/status', requirePermission('delivery.view'), async (req, res)
     if (!delivery) return res.status(404).json({ success: false, error: { message: 'Assignment not found' } });
     const status = req.body.status;
     if (!deliveryTransitions[delivery.status]?.includes(status) || ['CANCELLED', 'DELIVERED'].includes(delivery.order.status)) throw new Error('Invalid delivery transition');
+    if (status === 'DELIVERED' && delivery.order.paymentMethod === 'COD') {
+      const cod = await prisma.codRecord.findUnique({ where: { orderId: delivery.orderId }, select: { status: true } });
+      if (!cod || cod.status === 'PENDING_COLLECTION') throw new Error('Record COD collection before completing delivery');
+    }
     const orderStatus = status === 'ACCEPTED' ? 'RIDER_ASSIGNED' : status;
     const timestamp = status === 'ACCEPTED' ? { acceptedAt: new Date() } : status === 'PICKED_UP' ? { pickedUpAt: new Date() } : status === 'DELIVERED' ? { deliveredAt: new Date() } : {};
     const order = await prisma.$transaction(async tx => {

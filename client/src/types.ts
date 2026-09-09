@@ -252,6 +252,18 @@ export interface Delivery {
   deliveredAt?: string | null;
 }
 
+export interface CodRecord {
+  id: string;
+  status: 'PENDING_COLLECTION' | 'COLLECTED_BY_RIDER' | 'PENDING_SETTLEMENT' | 'SETTLED' | 'DISPUTED';
+  expectedAmount: number;
+  collectedAmount?: number | null;
+  collectedAt?: string | null;
+  receivedAmount?: number | null;
+  settledAt?: string | null;
+  differenceAmount?: number | null;
+  disputeReason?: string | null;
+}
+
 export interface Order {
   id: string;
   tenantId?: string;
@@ -274,6 +286,7 @@ export interface Order {
   items: OrderItem[];
   statusHistory?: OrderStatusHistory[];
   delivery?: Delivery | null;
+  codRecord?: CodRecord | null;
   createdAt: string;
   updatedAt?: string;
 }

@@ -411,6 +411,19 @@ export const api = {
     return handleResponse<Delivery>(res);
   },
 
+  async collectCod(orderId: string, amount: number): Promise<any> {
+    return handleResponse(await authenticatedFetch(`${API_URL}/api/v1/payments/cod/${orderId}/collect`, { method: 'POST', body: JSON.stringify({ amount }) }));
+  },
+
+  async updateCodSettlement(orderId: string, payload: { status: 'PENDING_SETTLEMENT' | 'SETTLED' | 'DISPUTED'; receivedAmount?: number; reason?: string }): Promise<any> {
+    return handleResponse(await authenticatedFetch(`${API_URL}/api/v1/payments/cod/${orderId}/settlement`, { method: 'PATCH', body: JSON.stringify(payload) }));
+  },
+
+  async getCodRecords(status?: string): Promise<any[]> {
+    const query = status ? `?status=${encodeURIComponent(status)}` : '';
+    return handleResponse(await authenticatedFetch(`${API_URL}/api/v1/payments/cod${query}`));
+  },
+
   async sendRiderLocation(
     deliveryId: string,
     coords: { latitude: number; longitude: number; heading?: number; speed?: number }

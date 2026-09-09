@@ -18,6 +18,7 @@ import voucherRoutes from './routes/vouchers';
 import bannerRoutes from './routes/banners';
 import analyticsRoutes from './routes/analytics';
 import staffRoutes from './routes/staff';
+import paymentRoutes from './routes/payments';
 
 dotenv.config();
 
@@ -81,6 +82,7 @@ app.use('/api/v1/vouchers', voucherRoutes);
 app.use('/api/v1/banners', bannerRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/staff', staffRoutes);
+app.use('/api/v1/payments', paymentRoutes);
 
 // ── BACKWARDS COMPATIBILITY ALIASES ────────────────────────────────
 app.use('/api/auth', authRoutes);
@@ -90,6 +92,7 @@ app.use('/api/branches', branchRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/vouchers', voucherRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // ── CENTRALIZED ERROR HANDLER  ──────────────────────
 app.use((err: any, req: Request, res: Response, next: any) => {

@@ -41,6 +41,7 @@ router.post('/', async (req, res) => {
           tax: pricing.tax, deliveryFee: pricing.deliveryFee, total: pricing.total,
           items: { create: pricing.items },
           statusHistory: { create: { newStatus: 'PENDING', changedBy: req.user!.id } },
+          codRecord: { create: { tenantId, expectedAmount: pricing.total } },
           ...(orderMode === 'DELIVERY' ? { delivery: { create: { tenantId, branchId, deliveryAddress } } } : {}),
         }, include: orderInclude,
       });
@@ -74,6 +75,7 @@ router.get('/admin/:id', requirePermission('orders.internal_view'), async (req, 
         items: true, branch: true,
         customer: { select: { id: true, name: true, email: true, phone: true, createdAt: true } },
         delivery: { include: { rider: { include: { user: { select: { id: true, name: true, email: true, phone: true } } } } } },
+        codRecord: { include: { collectedBy: { select: { id: true, name: true } }, receivedBy: { select: { id: true, name: true } } } },
         statusHistory: { orderBy: { timestamp: 'asc' } },
       },
     });
