@@ -45,7 +45,7 @@ router.post('/', async (req, res) => {
           ...(orderMode === 'DELIVERY' ? { delivery: { create: { tenantId, branchId, deliveryAddress } } } : {}),
         }, include: orderInclude,
       });
-      await tx.auditLog.create({ data: { tenantId, userId: req.user!.id, action: 'CREATE', entity: 'Order', entityId: created.id } });
+      await tx.auditLog.create({ data: { tenantId, userId: req.user!.id, actorRole: req.user!.roles.join(','), branchId: created.branchId, action: 'CREATE', entity: 'Order', entityId: created.id } });
       return created;
     });
     emitOrder('order:new', order);
@@ -143,7 +143,7 @@ router.post('/:id/messages', requirePermission('communications.respond'), async 
 
 router.get('/:id/internal-notes', requirePermission('orders.internal_view'), async (req, res) => {
   const scope = await orderScope(req.user!, req.tenant!.id);
-  const order = await prisma.order.findFirst({ where: { AND: [scope, { id: req.params.id }] }, select: { id: true } });
+  const order = await prisma.order.findFirst({ where: { AND: [scope, { id: req.params.id }] }, select: { id: true, branchId: true } });
   if (!order) return res.status(404).json({ success: false, error: { message: 'Order not found' } });
   const notes = await prisma.internalOrderNote.findMany({ where: { tenantId: req.tenant!.id, orderId: order.id }, include: { author: { select: { id: true, name: true, role: true } } }, orderBy: { createdAt: 'asc' } });
   res.json({ success: true, data: notes });
@@ -151,13 +151,13 @@ router.get('/:id/internal-notes', requirePermission('orders.internal_view'), asy
 
 router.post('/:id/internal-notes', requirePermission('orders.internal_view'), async (req, res) => {
   const scope = await orderScope(req.user!, req.tenant!.id);
-  const order = await prisma.order.findFirst({ where: { AND: [scope, { id: req.params.id }] }, select: { id: true } });
+  const order = await prisma.order.findFirst({ where: { AND: [scope, { id: req.params.id }] }, select: { id: true, branchId: true } });
   if (!order) return res.status(404).json({ success: false, error: { message: 'Order not found' } });
   const note = typeof req.body.note === 'string' ? req.body.note.trim() : '';
   if (!note || note.length > 2000) return res.status(400).json({ success: false, error: { message: 'Internal note must contain 1 to 2000 characters' } });
   const created = await prisma.$transaction(async tx => {
     const value = await tx.internalOrderNote.create({ data: { tenantId: req.tenant!.id, orderId: order.id, authorId: req.user!.id, note }, include: { author: { select: { id: true, name: true, role: true } } } });
-    await tx.auditLog.create({ data: { tenantId: req.tenant!.id, userId: req.user!.id, action: 'INTERNAL_NOTE_ADDED', entity: 'Order', entityId: order.id } });
+    await tx.auditLog.create({ data: { tenantId: req.tenant!.id, userId: req.user!.id, actorRole: req.user!.roles.join(','), branchId: order.branchId, action: 'INTERNAL_NOTE_ADDED', entity: 'Order', entityId: order.id } });
     return value;
   });
   res.status(201).json({ success: true, data: created });
@@ -185,7 +185,7 @@ router.patch('/:id/status', requirePermission('orders.manage'), async (req, res)
       if (!changed.count) throw new Error('Order changed; refresh and retry');
       if (status === 'CANCELLED') await tx.delivery.updateMany({ where: { orderId: current.id }, data: { status: 'CANCELLED' } });
       await tx.orderStatusHistory.create({ data: { orderId: current.id, oldStatus: current.status, newStatus: status, changedBy: req.user!.id } });
-      await tx.auditLog.create({ data: { tenantId: current.tenantId, userId: req.user!.id, action: 'STATUS', entity: 'Order', entityId: current.id, oldValue: current.status, newValue: status } });
+      await tx.auditLog.create({ data: { tenantId: current.tenantId, userId: req.user!.id, actorRole: req.user!.roles.join(','), branchId: current.branchId, action: 'STATUS', entity: 'Order', entityId: current.id, oldValue: current.status, newValue: status } });
       return tx.order.findUniqueOrThrow({ where: { id: current.id }, include: orderInclude });
     });
     emitOrder('order:status_updated', updated);

@@ -56,7 +56,7 @@ router.post('/accept-invitation', async (req, res) => {
     await prisma.$transaction(async tx => {
       await tx.user.update({ where: { id: invitation.userId }, data: { password: hashedPassword, isActive: true } });
       await tx.staffInvitation.update({ where: { id: invitation.id }, data: { status: 'ACCEPTED', acceptedAt: new Date() } });
-      await tx.auditLog.create({ data: { tenantId: invitation.tenantId, userId: invitation.userId, action: 'STAFF_INVITATION_ACCEPTED', entity: 'User', entityId: invitation.userId } });
+      await tx.auditLog.create({ data: { tenantId: invitation.tenantId, userId: invitation.userId, actorRole: invitation.user.role, action: 'STAFF_INVITATION_ACCEPTED', entity: 'User', entityId: invitation.userId } });
     });
     return res.json({ success: true, data: { activated: true } });
   } catch (error: any) {
@@ -127,7 +127,7 @@ router.post('/', requirePermission('staff.create'), async (req, res) => {
       if (role !== 'RIDER') for (const branchId of branchIds) await tx.branchStaff.create({ data: { userId: user.id, branchId, role } });
       if (role === 'RIDER') await tx.rider.create({ data: { tenantId, userId: user.id, branchId: branchIds[0], status: 'OFFLINE', isAvailable: false } });
       await tx.staffInvitation.create({ data: { tenantId, userId: user.id, tokenHash: hashRefreshToken(invitationToken), expiresAt, createdById: req.user!.id } });
-      await tx.auditLog.create({ data: { tenantId, userId: req.user!.id, action: 'STAFF_CREATED', entity: 'User', entityId: user.id, newValue: JSON.stringify({ role, branchIds, status: 'INVITED' }) } });
+      await tx.auditLog.create({ data: { tenantId, userId: req.user!.id, actorRole: req.user!.roles.join(','), branchId: branchIds.length === 1 ? branchIds[0] : null, action: 'STAFF_CREATED', entity: 'User', entityId: user.id, newValue: JSON.stringify({ role, branchIds, status: 'INVITED' }) } });
       return user;
     });
     const invitationPath = `/staff/accept-invite?tenant=${encodeURIComponent(req.tenant!.slug)}&token=${encodeURIComponent(invitationToken)}`;
@@ -168,7 +168,7 @@ router.patch('/:id', requirePermission('staff.edit'), async (req, res) => {
       if (role === 'RIDER') await tx.rider.upsert({ where: { userId: staff.id }, update: { tenantId, branchId: branchIds[0] }, create: { tenantId, userId: staff.id, branchId: branchIds[0], status: 'OFFLINE', isAvailable: false } });
       else await tx.rider.updateMany({ where: { userId: staff.id }, data: { status: 'OFFLINE', isAvailable: false } });
       await tx.refreshToken.updateMany({ where: { userId: staff.id, revokedAt: null }, data: { revokedAt: new Date() } });
-      await tx.auditLog.create({ data: { tenantId, userId: req.user!.id, action: 'STAFF_ASSIGNMENT_CHANGED', entity: 'User', entityId: staff.id, oldValue: JSON.stringify(previous), newValue: JSON.stringify({ role, branchIds }) } });
+      await tx.auditLog.create({ data: { tenantId, userId: req.user!.id, actorRole: req.user!.roles.join(','), branchId: branchIds.length === 1 ? branchIds[0] : null, action: 'STAFF_ASSIGNMENT_CHANGED', entity: 'User', entityId: staff.id, oldValue: JSON.stringify(previous), newValue: JSON.stringify({ role, branchIds }) } });
     });
     res.json({ success: true, data: { id: staff.id, role, branchIds } });
   } catch (error: any) {
@@ -188,7 +188,7 @@ router.patch('/:id/status', requirePermission('staff.disable'), async (req, res)
         await tx.refreshToken.updateMany({ where: { userId: staff.id, revokedAt: null }, data: { revokedAt: new Date() } });
         await tx.rider.updateMany({ where: { userId: staff.id }, data: { isAvailable: false, status: 'OFFLINE' } });
       }
-      await tx.auditLog.create({ data: { tenantId: req.tenant!.id, userId: req.user!.id, action: req.body.isActive ? 'STAFF_REACTIVATED' : 'STAFF_DISABLED', entity: 'User', entityId: staff.id, oldValue: String(staff.isActive), newValue: String(req.body.isActive) } });
+      await tx.auditLog.create({ data: { tenantId: req.tenant!.id, userId: req.user!.id, actorRole: req.user!.roles.join(','), action: req.body.isActive ? 'STAFF_REACTIVATED' : 'STAFF_DISABLED', entity: 'User', entityId: staff.id, oldValue: String(staff.isActive), newValue: String(req.body.isActive) } });
     });
     res.json({ success: true, data: { id: staff.id, isActive: req.body.isActive } });
   } catch (error: any) {

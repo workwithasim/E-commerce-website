@@ -302,6 +302,7 @@ model Branch {
   deliveries     Delivery[]
   banners        Banner[]
   roleAssignments RoleAssignment[]
+  auditLogs       AuditLog[]
 
   @@index([tenantId])
   @@index([city])
@@ -672,6 +673,9 @@ model AuditLog {
   tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
   userId    String?
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  actorRole String?
+  branchId  String?
+  branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   action    String
   entity    String
   entityId  String
@@ -683,5 +687,6 @@ model AuditLog {
 
   @@index([tenantId])
   @@index([userId])
+  @@index([branchId])
   @@index([entity])
 }

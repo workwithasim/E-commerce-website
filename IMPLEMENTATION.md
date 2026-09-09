@@ -62,6 +62,15 @@ Phase A is implemented and automatically verified. Manual browser verification o
 - [x] Rider and admin order views expose the permitted COD workflow; customer order APIs do not receive staff accountability fields.
 - [ ] Browser/device verification and a dedicated tenant-wide COD dashboard remain pending.
 
+### Phase F — Audit expansion
+
+- [x] Tenant-scoped audit listing API with actor, role, branch, date, action, entity, and entity-ID filters plus bounded pagination.
+- [x] Admin Audit Logs tab with filters, previous/new state disclosure, loading, error, empty, and pagination states.
+- [x] New order, kitchen, delivery, staff, rider, internal-note, and COD audit writes preserve actor-role context and branch context where applicable.
+- [x] Server/client builds and the 20-test regression suite pass; the refresh-session test is now isolated from external database availability.
+- [x] PostgreSQL-backed verification proves tenant-admin filtered access, actor/branch context, and customer/support denial; temporary records are removed afterward.
+- [ ] Remaining settings/menu/voucher/customer/override audit coverage and browser verification are pending.
+
 ## Verification log
 
 - Initial review: client build and server type check pass, but runtime contracts and access controls need repair.
@@ -75,6 +84,7 @@ Phase A is implemented and automatically verified. Manual browser verification o
 - RBAC/staff/rider/admin-order increment: 20 server tests pass. New coverage verifies combined roles, cross-tenant assignment rejection, assigned-branch order scope, and support/payment separation. The PostgreSQL-backed flow verifies staff lifecycle/audit, rider management, and the staff-only complete order projection/timeline while rejecting customer access. The local additive schema and nine existing tenant users were backfilled successfully.
 - Communication increment: server/client builds and the 20-test regression suite pass. The PostgreSQL-backed flow verifies customer and active assigned-rider messaging, customer visibility of rider replies, unrelated-customer denial, rider cutoff after delivery, customer denial of internal notes, and audited admin note creation.
 - COD reconciliation increment: server/client builds and all 20 regression tests pass. The PostgreSQL-backed flow verifies the expected server total, pre-collection delivery block, assigned-rider collection, customer denial, duplicate protection, support-staff settlement denial, admin settlement transitions, paid state, and audit entries.
+- Audit-viewer increment: server/client builds and all 20 regression tests pass. The additive schema was applied, and the PostgreSQL-backed flow verifies filtered tenant-admin access, actor/branch context, and customer/support denial. The temporary verification tenant was removed afterward.
 - Local secrets: `server/.env` was removed from the Git index while retaining the local file. Historical commits are unaffected. The example environment file now contains placeholders and the correct origin/secret settings.
 
 ## Remaining verification and future scope

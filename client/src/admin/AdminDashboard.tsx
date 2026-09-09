@@ -5,6 +5,7 @@ import { AuthUser } from '../LoginPage';
 import { useTenant } from '../theme/ThemeProvider';
 import { StaffManagement } from './StaffManagement';
 import { RiderManagement } from './RiderManagement';
+import { AuditViewer } from './AuditViewer';
 
 interface AdminDashboardProps {
   onBackToStore?: () => void;
@@ -19,7 +20,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   authUser,
 }) => {
   const { tenant, branding, settings, refreshTenant } = useTenant();
-  const [activeTab, setActiveTab] = useState<'orders' | 'staff' | 'riders' | 'products' | 'branding' | 'branches' | 'analytics'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'staff' | 'riders' | 'products' | 'branding' | 'branches' | 'analytics' | 'audit'>('orders');
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -258,6 +259,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             ...(can('settings.manage') ? [{ id: 'branding', label: `🎨 Visual Branding` }] : []),
             ...(can('branches.view') ? [{ id: 'branches', label: `📍 Branches (${branches.length})` }] : []),
             ...(can('reports.view') ? [{ id: 'analytics', label: `📊 Revenue Stats` }] : []),
+            ...(can('audit.view') ? [{ id: 'audit', label: '🧾 Audit Logs' }] : []),
           ].map((tab) => (
             <button
               key={tab.id}
@@ -321,6 +323,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '28px 24px' }}>
         {activeTab === 'staff' && can('staff.view') && <StaffManagement branches={branches} canDisable={can('staff.disable')} />}
         {activeTab === 'riders' && can('riders.view') && <RiderManagement initialRiders={riders} branches={branches} canManage={can('riders.manage')} reload={loadData} />}
+        {activeTab === 'audit' && can('audit.view') && <AuditViewer branches={branches} />}
         {/* TAB 1: ORDERS */}
         {activeTab === 'orders' && (
           <div>

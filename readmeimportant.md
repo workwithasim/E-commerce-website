@@ -43,6 +43,7 @@ For an existing database, staff need explicit `BranchStaff` memberships. Kitchen
 - Authorized admins manage rider vehicle, registration, delivery-zone, and branch details from the Riders tab and can inspect delivery history and recent operational activity. Assigned riders record COD collection before delivery completion; payment managers reconcile restaurant receipt from the complete order view. This does not add continuous location surveillance or online payment processing.
 - Authorized operations staff can open Full details on an order to see the customer summary, items, financials, kitchen actors/timing, delivery timestamps, payment state, and a chronological history/audit timeline. Customer order APIs do not receive this internal projection.
 - Customers, authorized branch/support staff, and the actively assigned rider can exchange order messages. Rider access ends after delivery/cancellation. Lifecycle changes appear as system messages. Internal notes stay staff-only and are audited.
+- Tenant admins can inspect append-only operational history in the Audit Logs tab and filter by actor role, branch, date, action, and entity. Customer and support-only roles are denied audit access.
 - Dedicated entry URLs are available for `/admin/login`, `/staff/login`, `/kitchen`, `/branch`, `/rider/login`, and `/platform/login`; all use the same identity and session backend.
 
 ## Access and real-time behavior

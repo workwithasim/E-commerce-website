@@ -36,6 +36,8 @@ before(async () => {
     }
     return { count };
   };
+  (prisma.roleAssignment.findMany as any) = async () => [];
+  (prisma.branchStaff.findMany as any) = async () => [];
   (prisma.$transaction as any) = async (callback: any) => callback(prisma);
 
   const app = express();

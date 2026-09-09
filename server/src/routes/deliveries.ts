@@ -57,7 +57,7 @@ router.patch('/riders/:id', requirePermission('riders.manage'), async (req, res)
         ...(req.body.deliveryZone !== undefined ? { deliveryZone: req.body.deliveryZone || null } : {}),
       }, include: { user: { select: publicUser }, branch: true } });
       await tx.roleAssignment.updateMany({ where: { userId: rider.userId, tenantId: req.tenant!.id, role: 'RIDER' }, data: { branchId } });
-      await tx.auditLog.create({ data: { tenantId: req.tenant!.id, userId: req.user!.id, action: 'RIDER_PROFILE_CHANGED', entity: 'Rider', entityId: rider.id, oldValue: JSON.stringify(previous), newValue: JSON.stringify({ branchId, vehicleType: value.vehicleType, vehicleNumber: value.vehicleNumber, deliveryZone: value.deliveryZone }) } });
+      await tx.auditLog.create({ data: { tenantId: req.tenant!.id, userId: req.user!.id, actorRole: req.user!.roles.join(','), branchId, action: 'RIDER_PROFILE_CHANGED', entity: 'Rider', entityId: rider.id, oldValue: JSON.stringify(previous), newValue: JSON.stringify({ branchId, vehicleType: value.vehicleType, vehicleNumber: value.vehicleNumber, deliveryZone: value.deliveryZone }) } });
       return value;
     });
     res.json({ success: true, data: updated });
@@ -77,7 +77,7 @@ router.post('/assign', requirePermission('riders.assign'), async (req, res) => {
       if (!changed.count) throw new Error('Order already assigned');
       await tx.delivery.update({ where: { orderId }, data: { riderId, status: 'ASSIGNED', assignedAt: new Date() } });
       await tx.orderStatusHistory.create({ data: { orderId, oldStatus: 'READY', newStatus: 'RIDER_ASSIGNED', changedBy: req.user!.id } });
-      await tx.auditLog.create({ data: { tenantId: req.tenant!.id, userId: req.user!.id, action: 'ASSIGN', entity: 'Order', entityId: orderId, newValue: riderId } });
+      await tx.auditLog.create({ data: { tenantId: req.tenant!.id, userId: req.user!.id, actorRole: req.user!.roles.join(','), branchId: order.branchId, action: 'ASSIGN', entity: 'Order', entityId: orderId, newValue: riderId } });
       return tx.order.findUniqueOrThrow({ where: { id: orderId }, include: orderInclude });
     });
     emitOrder('order:status_updated', result);
@@ -111,7 +111,7 @@ router.patch('/:id/status', requirePermission('delivery.view'), async (req, res)
       const updated = await tx.order.updateMany({ where: { id: delivery.orderId, status: delivery.order.status }, data: { status: orderStatus } });
       if (!updated.count) throw new Error('Order changed; refresh and retry');
       if (orderStatus !== delivery.order.status) await tx.orderStatusHistory.create({ data: { orderId: delivery.orderId, oldStatus: delivery.order.status, newStatus: orderStatus, changedBy: req.user!.id } });
-      await tx.auditLog.create({ data: { tenantId: req.tenant!.id, userId: req.user!.id, action: 'STATUS', entity: 'Delivery', entityId: delivery.id, oldValue: delivery.status, newValue: status } });
+      await tx.auditLog.create({ data: { tenantId: req.tenant!.id, userId: req.user!.id, actorRole: req.user!.roles.join(','), branchId: delivery.branchId, action: 'STATUS', entity: 'Delivery', entityId: delivery.id, oldValue: delivery.status, newValue: status } });
       return tx.order.findUniqueOrThrow({ where: { id: delivery.orderId }, include: orderInclude });
     });
     emitOrder('order:status_updated', order);

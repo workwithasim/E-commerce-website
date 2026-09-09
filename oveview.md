@@ -30,7 +30,7 @@ The existing implementation must remain functional while the platform is expande
 
 ## Current expansion status (2026-09-09)
 
-The required pre-coding gap analysis is recorded in `GAP_ANALYSIS.md`. Phases A–E are implemented and automatically verified through the current milestones: sessions/RBAC, staff/rider management, complete core admin order detail, secure customer/staff/active-rider chat, staff-only audited internal notes, and order-level COD collection/settlement. Browser checks, tenant-wide COD reporting, online payment providers, and controlled production migrations remain pending. Verified details belong in `IMPLEMENTATION.md`; this document remains the target specification.
+The required pre-coding gap analysis is recorded in `GAP_ANALYSIS.md`. Phases A–E and the first Phase F audit-viewer milestone are implemented and automatically verified: sessions/RBAC, staff/rider management, complete core admin order detail, secure chat, internal notes, COD reconciliation, and filtered tenant audit history. Remaining administrative audit coverage, browser checks, tenant-wide COD reporting, online payment providers, and controlled production migrations remain pending. Verified details belong in `IMPLEMENTATION.md`; this document remains the target specification.
 
 ---
 

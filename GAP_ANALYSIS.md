@@ -12,7 +12,7 @@ Assessment date: 2026-09-09. This compares `oveview.md` with the maintained `cli
 ## 2. Functionality needing UI exposure
 
 - Order status history, delivery timestamps, financials, actors, existing audits, internal notes, communication, and COD reconciliation now feed a staff-only complete admin order-detail dialog. Issues and privileged overrides remain pending.
-- Audit records are written for core order/delivery actions but have no audit viewer.
+- Core operational audit records now have a filtered admin viewer with database-backed authorization coverage; remaining administrative mutation coverage is still pending.
 - Rider branch, vehicle, availability, current assignments, and history exist but lack a full management profile/editor.
 - Tenant settings and product option groups exist but have only partial editors.
 
@@ -56,13 +56,13 @@ These should be introduced incrementally. Existing `OrderStatusHistory` and `Aud
 
 ## 8. Missing audit events
 
-- Customer disable; branch/settings/menu/voucher changes; issues/overrides; provider payment changes; conversation access where required; and session administration. Staff lifecycle, internal notes, and COD collection/settlement are now audited.
-- Existing records do not consistently capture actor role and branch context. Sensitive credentials/tokens must never enter audit values.
+- Customer disable; branch/settings/menu/voucher changes; issues/overrides; provider payment changes; conversation access where required; and session administration remain incomplete. Staff lifecycle, internal notes, COD collection/settlement, order, and delivery activity now preserve actor role and branch context where available.
+- New core operational records capture actor role and branch context where applicable; historical records and remaining administrative modules still need coverage. Sensitive credentials/tokens must never enter audit values.
 
 ## 9. Missing tests
 
 - Remaining endpoint-level authorization cases for future payment/chat/audit/customer modules and privileged session administration.
-- Voucher concurrency, audit filtering, issue/override behavior, and browser-level staff/portal behavior remain unverified. Rider administration, chat, COD reconciliation, and the admin-order projection have database-backed coverage.
+- Voucher concurrency, issue/override behavior, and browser-level staff/portal behavior remain unverified. Rider administration, chat, COD reconciliation, audit filtering, and the admin-order projection have database-backed coverage.
 - Browser/device checks listed in `walkthrough.md` remain manual and unverified.
 
 ## 10. Migration risks

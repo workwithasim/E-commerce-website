@@ -424,6 +424,11 @@ export const api = {
     return handleResponse(await authenticatedFetch(`${API_URL}/api/v1/payments/cod${query}`));
   },
 
+  async getAuditLogs(params: Record<string, string | number>): Promise<any> {
+    const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== '' && value != null).map(([key, value]) => [key, String(value)]));
+    return handleResponse(await authenticatedFetch(`${API_URL}/api/v1/audit?${query}`));
+  },
+
   async sendRiderLocation(
     deliveryId: string,
     coords: { latitude: number; longitude: number; heading?: number; speed?: number }

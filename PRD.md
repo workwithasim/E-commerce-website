@@ -65,6 +65,6 @@ Current product decisions:
 - COD is supported. Online payment options are not advertised until provider integration exists.
 - Native applications remain outside this web repair milestone.
 
-Phases A–E through order-level COD reconciliation are implemented and automatically verified. The admin projection reuses existing status/audit data; internal notes and COD staff-accountability details remain isolated from customer order APIs. Browser verification, tenant-wide COD reporting, online payment providers, and controlled production migrations remain pending; see `GAP_ANALYSIS.md` and `IMPLEMENTATION.md` for evidence and boundaries.
+Phases A–E and the first Phase F audit-viewer milestone are implemented and automatically verified. The admin projection reuses existing status/audit data; internal notes and COD staff-accountability details remain isolated from customer order APIs. Remaining administrative audit coverage, browser verification, tenant-wide COD reporting, online payment providers, and controlled production migrations remain pending; see `GAP_ANALYSIS.md` and `IMPLEMENTATION.md` for evidence and boundaries.
 
 Not yet complete: native Android/iOS apps, online payments/refunds, production deployment/migrations, complete rider administration, voucher redemption limits, complete audit coverage, comprehensive settings/menu-option administration, and advanced analytics. Visual browser and device-location verification is pending; automated API/database checks do not substitute for it.
