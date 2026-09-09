@@ -22,7 +22,7 @@ Assessment date: 2026-09-09. This compares `oveview.md` with the maintained `cli
 - Session persistence existed without rotation/logout. The first new increment now implements hashed refresh tokens, rotation, logout, expiry, and disabled-user enforcement; device/session listing and force-logout UI remain pending.
 - Order lifecycle history needs actor details, operational timestamps/metrics, notes, issues, and a complete admin projection.
 - Riders can now be invited, branch-assigned, deactivated, and edited with vehicle/zone information; admins can inspect delivery history/activity and assigned riders can record COD collection.
-- Search, reports, settings, menu administration, notifications, and audit coverage are partial.
+- Search, reports, settings, menu administration, notifications, and audit coverage are partial. Core branch/menu/voucher/settings mutations now write transactional audits.
 
 ## 4. Missing database entities or fields
 
@@ -56,7 +56,7 @@ These should be introduced incrementally. Existing `OrderStatusHistory` and `Aud
 
 ## 8. Missing audit events
 
-- Customer disable; branch/settings/menu/voucher changes; issues/overrides; provider payment changes; conversation access where required; and session administration remain incomplete. Staff lifecycle, internal notes, COD collection/settlement, order, and delivery activity now preserve actor role and branch context where available.
+- Customer disable, issues/overrides, provider payment changes, conversation access where required, remaining voucher mutations, and session administration remain incomplete. Staff lifecycle, branches, core menu changes, voucher creation, settings/branding, internal notes, COD, order, and delivery activity are audited.
 - New core operational records capture actor role and branch context where applicable; historical records and remaining administrative modules still need coverage. Sensitive credentials/tokens must never enter audit values.
 
 ## 9. Missing tests

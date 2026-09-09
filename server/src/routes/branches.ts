@@ -5,6 +5,7 @@ import { authenticateJWT } from '../middleware/auth';
 import { requireTenantIsolation } from '../middleware/tenant';
 import { getIO } from '../socket';
 import { hasBranchAccess, requirePermission } from '../services/permissions';
+import { auditActor, auditValue } from '../services/audit';
 
 const router = Router();
 
@@ -54,9 +55,10 @@ router.patch('/:id/toggle', authenticateJWT, requireTenantIsolation, requirePerm
     }
 
     if (!hasBranchAccess(req.user!, id)) return res.status(403).json({ success: false, error: { message: 'Branch access denied' } });
-    const updated = await prisma.branch.update({
-      where: { id },
-      data: { isOpen: !branch.isOpen },
+    const updated = await prisma.$transaction(async tx => {
+      const value = await tx.branch.update({ where: { id }, data: { isOpen: !branch.isOpen } });
+      await tx.auditLog.create({ data: { tenantId, branchId: id, ...auditActor(req), action: value.isOpen ? 'BRANCH_OPENED' : 'BRANCH_CLOSED', entity: 'Branch', entityId: id, oldValue: auditValue({ isOpen: branch.isOpen }), newValue: auditValue({ isOpen: value.isOpen }) } });
+      return value;
     });
 
     try {
@@ -91,8 +93,8 @@ router.post('/', authenticateJWT, requireTenantIsolation, requirePermission('set
       });
     }
 
-    const branch = await prisma.branch.create({
-      data: {
+    const branch = await prisma.$transaction(async tx => {
+      const value = await tx.branch.create({ data: {
         tenantId,
         name,
         city,
@@ -104,7 +106,9 @@ router.post('/', authenticateJWT, requireTenantIsolation, requirePermission('set
         latitude: latitude ? Number(latitude) : null,
         longitude: longitude ? Number(longitude) : null,
         isOpen: true,
-      },
+      } });
+      await tx.auditLog.create({ data: { tenantId, branchId: value.id, ...auditActor(req), action: 'BRANCH_CREATED', entity: 'Branch', entityId: value.id, newValue: auditValue(value) } });
+      return value;
     });
 
     res.status(201).json({

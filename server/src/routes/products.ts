@@ -5,6 +5,7 @@ import { authenticateJWT } from '../middleware/auth';
 import { requireTenantIsolation } from '../middleware/tenant';
 import { getIO } from '../socket';
 import { requirePermission } from '../services/permissions';
+import { auditActor, auditValue } from '../services/audit';
 
 const router = Router();
 
@@ -128,8 +129,8 @@ router.post('/', authenticateJWT, requireTenantIsolation, requirePermission('men
     if (categoryId && !await prisma.category.findFirst({ where: { id: categoryId, tenantId } })) return res.status(400).json({ success: false, error: { message: 'Invalid category' } });
     if (!Number.isFinite(Number(basePrice)) || Number(basePrice) < 0) return res.status(400).json({ success: false, error: { message: 'Invalid price' } });
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const product = await prisma.product.create({
-      data: {
+    const product = await prisma.$transaction(async tx => {
+      const value = await tx.product.create({ data: {
         tenantId,
         name,
         slug: `${slug}-${Date.now().toString().slice(-4)}`,
@@ -142,8 +143,9 @@ router.post('/', authenticateJWT, requireTenantIsolation, requirePermission('men
         isDeal: Boolean(isDeal),
         isFeatured: Boolean(isFeatured),
         isAvailable: true,
-      },
-      include: { category: true, optionGroups: { include: { options: true } } },
+      }, include: { category: true, optionGroups: { include: { options: true } } } });
+      await tx.auditLog.create({ data: { tenantId, ...auditActor(req), action: 'PRODUCT_CREATED', entity: 'Product', entityId: value.id, newValue: auditValue(value) } });
+      return value;
     });
 
     try {
@@ -195,9 +197,8 @@ router.put('/:id', authenticateJWT, requireTenantIsolation, requirePermission('m
     for (const value of [basePrice, discountedPrice]) {
       if (value !== undefined && value !== null && (typeof value !== 'number' || !Number.isFinite(value) || value < 0)) return res.status(400).json({ success: false, error: { message: 'Prices must be non-negative numbers' } });
     }
-    const updated = await prisma.product.update({
-      where: { id },
-      data: {
+    const updated = await prisma.$transaction(async tx => {
+      const value = await tx.product.update({ where: { id }, data: {
         ...(name && { name }),
         ...(description !== undefined && { description }),
         ...(basePrice !== undefined && { basePrice: Number(basePrice) }),
@@ -207,8 +208,10 @@ router.put('/:id', authenticateJWT, requireTenantIsolation, requirePermission('m
         ...(isDeal !== undefined && { isDeal: Boolean(isDeal) }),
         ...(isFeatured !== undefined && { isFeatured: Boolean(isFeatured) }),
         ...(image && { image }),
-      },
-      include: { category: true, optionGroups: { include: { options: true } } },
+      }, include: { category: true, optionGroups: { include: { options: true } } } });
+      const action = existing.basePrice !== value.basePrice || existing.discountedPrice !== value.discountedPrice ? 'PRODUCT_PRICE_CHANGED' : existing.isAvailable !== value.isAvailable ? 'PRODUCT_AVAILABILITY_CHANGED' : 'PRODUCT_CHANGED';
+      await tx.auditLog.create({ data: { tenantId, ...auditActor(req), action, entity: 'Product', entityId: id, oldValue: auditValue(existing), newValue: auditValue(value) } });
+      return value;
     });
 
     try {
@@ -246,8 +249,8 @@ router.post('/:id/options', authenticateJWT, requireTenantIsolation, requirePerm
     if (!await prisma.product.findFirst({ where: { id, tenantId } })) return res.status(404).json({ success: false, error: { message: 'Product not found' } });
     const min = minSelect ?? 0, max = maxSelect ?? 1;
     if (!Number.isInteger(min) || !Number.isInteger(max) || min < 0 || max < Math.max(min, isRequired ? 1 : 0) || max > options.length || options.some((o: any) => !o || typeof o.name !== 'string' || !o.name.trim() || !Number.isFinite(Number(o.priceModifier ?? 0)))) return res.status(400).json({ success: false, error: { message: 'Invalid option group' } });
-    const group = await prisma.productOptionGroup.create({
-      data: {
+    const group = await prisma.$transaction(async tx => {
+      const value = await tx.productOptionGroup.create({ data: {
         tenantId,
         productId: id,
         name,
@@ -262,8 +265,9 @@ router.post('/:id/options', authenticateJWT, requireTenantIsolation, requirePerm
             sortOrder: idx + 1,
           })),
         },
-      },
-      include: { options: true },
+      }, include: { options: true } });
+      await tx.auditLog.create({ data: { tenantId, ...auditActor(req), action: 'PRODUCT_OPTIONS_CHANGED', entity: 'Product', entityId: id, newValue: auditValue(value) } });
+      return value;
     });
 
     res.status(201).json({
@@ -295,7 +299,10 @@ router.delete('/:id', authenticateJWT, requireTenantIsolation, requirePermission
       });
     }
 
-    await prisma.product.delete({ where: { id } });
+    await prisma.$transaction(async tx => {
+      await tx.product.delete({ where: { id } });
+      await tx.auditLog.create({ data: { tenantId, ...auditActor(req), action: 'PRODUCT_DELETED', entity: 'Product', entityId: id, oldValue: auditValue(existing) } });
+    });
 
     try {
       getIO().to(`catalog:${tenantId}`).emit('product:deleted', id);

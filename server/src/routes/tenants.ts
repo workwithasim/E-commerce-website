@@ -4,6 +4,7 @@ import { UserRole } from '@prisma/client';
 import { prisma } from '../prisma';
 import { authenticateJWT } from '../middleware/auth';
 import { requirePermission } from '../services/permissions';
+import { auditActor, auditValue } from '../services/audit';
 
 const router = Router();
 
@@ -156,6 +157,8 @@ router.post('/', authenticateJWT, requirePermission('platform.manage'), async (r
         await tx.roleAssignment.create({ data: { userId: admin.id, tenantId: tenant.id, role: UserRole.TENANT_ADMIN } });
       }
 
+      await tx.auditLog.create({ data: { tenantId: tenant.id, ...auditActor(req), action: 'TENANT_CREATED', entity: 'Tenant', entityId: tenant.id, newValue: auditValue({ name: tenant.name, slug: tenant.slug, currency: tenant.currency }) } });
+
       return tenant;
     });
 
@@ -199,9 +202,9 @@ router.put('/:id/branding', authenticateJWT, requirePermission('settings.manage'
       });
     }
 
-    const branding = await prisma.tenantBranding.upsert({
-      where: { tenantId: id },
-      update: {
+    const previous = await prisma.tenantBranding.findUnique({ where: { tenantId: id } });
+    const branding = await prisma.$transaction(async tx => {
+      const value = await tx.tenantBranding.upsert({ where: { tenantId: id }, update: {
         ...(logo && { logo }),
         ...(logoDark !== undefined && { logoDark }),
         ...(primaryColor && { primaryColor }),
@@ -214,13 +217,14 @@ router.put('/:id/branding', authenticateJWT, requirePermission('settings.manage'
         ...(cardRadius && { cardRadius }),
         ...(headingFont && { headingFont }),
         ...(bodyFont && { bodyFont }),
-      },
-      create: {
+      }, create: {
         tenantId: id,
         logo: logo || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300',
         primaryColor: primaryColor || '#D80032',
         secondaryColor: secondaryColor || '#FFE600',
-      },
+      } });
+      await tx.auditLog.create({ data: { tenantId: id, ...auditActor(req), action: 'BRANDING_CHANGED', entity: 'TenantBranding', entityId: value.id, oldValue: auditValue(previous), newValue: auditValue(value) } });
+      return value;
     });
 
     res.json({
@@ -252,10 +256,11 @@ router.put('/:id/settings', authenticateJWT, requirePermission('settings.manage'
     for (const key of ['minimumOrder', 'deliveryFee', 'freeDeliveryThreshold', 'taxRate']) {
       if (key in values && (typeof values[key] !== 'number' || !Number.isFinite(values[key]) || (values[key] as number) < 0)) return res.status(400).json({ success: false, error: { message: 'Invalid numeric setting' } });
     }
-    const settings = await prisma.tenantSettings.upsert({
-      where: { tenantId: id },
-      update: values,
-      create: { tenantId: id, ...values },
+    const previous = await prisma.tenantSettings.findUnique({ where: { tenantId: id } });
+    const settings = await prisma.$transaction(async tx => {
+      const value = await tx.tenantSettings.upsert({ where: { tenantId: id }, update: values, create: { tenantId: id, ...values } });
+      await tx.auditLog.create({ data: { tenantId: id, ...auditActor(req), action: 'SETTINGS_CHANGED', entity: 'TenantSettings', entityId: value.id, oldValue: auditValue(previous), newValue: auditValue(value) } });
+      return value;
     });
 
     res.json({

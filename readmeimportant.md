@@ -44,6 +44,7 @@ For an existing database, staff need explicit `BranchStaff` memberships. Kitchen
 - Authorized operations staff can open Full details on an order to see the customer summary, items, financials, kitchen actors/timing, delivery timestamps, payment state, and a chronological history/audit timeline. Customer order APIs do not receive this internal projection.
 - Customers, authorized branch/support staff, and the actively assigned rider can exchange order messages. Rider access ends after delivery/cancellation. Lifecycle changes appear as system messages. Internal notes stay staff-only and are audited.
 - Tenant admins can inspect append-only operational history in the Audit Logs tab and filter by actor role, branch, date, action, and entity. Customer and support-only roles are denied audit access.
+- Core staff, rider, order, delivery, COD, branch, menu, voucher-creation, branding, and settings mutations write audit records transactionally; credential-shaped fields are removed from stored audit values.
 - Dedicated entry URLs are available for `/admin/login`, `/staff/login`, `/kitchen`, `/branch`, `/rider/login`, and `/platform/login`; all use the same identity and session backend.
 
 ## Access and real-time behavior

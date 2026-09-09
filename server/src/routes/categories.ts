@@ -4,6 +4,7 @@ import { prisma } from '../prisma';
 import { authenticateJWT } from '../middleware/auth';
 import { requireTenantIsolation } from '../middleware/tenant';
 import { requirePermission } from '../services/permissions';
+import { auditActor, auditValue } from '../services/audit';
 
 const router = Router();
 
@@ -47,14 +48,16 @@ router.post('/', authenticateJWT, requireTenantIsolation, requirePermission('men
     }
 
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const category = await prisma.category.create({
-      data: {
+    const category = await prisma.$transaction(async tx => {
+      const value = await tx.category.create({ data: {
         tenantId,
         name,
         slug,
         image: image || null,
         description: description || null,
-      },
+      } });
+      await tx.auditLog.create({ data: { tenantId, ...auditActor(req), action: 'CATEGORY_CREATED', entity: 'Category', entityId: value.id, newValue: auditValue(value) } });
+      return value;
     });
 
     res.status(201).json({
@@ -87,14 +90,15 @@ router.put('/:id', authenticateJWT, requireTenantIsolation, requirePermission('m
       });
     }
 
-    const updated = await prisma.category.update({
-      where: { id },
-      data: {
+    const updated = await prisma.$transaction(async tx => {
+      const value = await tx.category.update({ where: { id }, data: {
         ...(name && { name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-') }),
         ...(image !== undefined && { image }),
         ...(description !== undefined && { description }),
         ...(isActive !== undefined && { isActive }),
-      },
+      } });
+      await tx.auditLog.create({ data: { tenantId, ...auditActor(req), action: 'CATEGORY_CHANGED', entity: 'Category', entityId: id, oldValue: auditValue(existing), newValue: auditValue(value) } });
+      return value;
     });
 
     res.json({
@@ -126,7 +130,10 @@ router.delete('/:id', authenticateJWT, requireTenantIsolation, requirePermission
       });
     }
 
-    await prisma.category.delete({ where: { id } });
+    await prisma.$transaction(async tx => {
+      await tx.category.delete({ where: { id } });
+      await tx.auditLog.create({ data: { tenantId, ...auditActor(req), action: 'CATEGORY_DELETED', entity: 'Category', entityId: id, oldValue: auditValue(existing) } });
+    });
 
     res.json({
       success: true,

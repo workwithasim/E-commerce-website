@@ -5,6 +5,7 @@ import { prisma } from '../prisma';
 import { authenticateJWT } from '../middleware/auth';
 import { requireTenantIsolation } from '../middleware/tenant';
 import { requirePermission } from '../services/permissions';
+import { auditActor, auditValue } from '../services/audit';
 
 const router = Router();
 
@@ -53,8 +54,8 @@ router.post('/', authenticateJWT, requireTenantIsolation, requirePermission('pro
     }
 
     const cleanCode = String(code).toUpperCase().trim();
-    const voucher = await prisma.voucher.create({
-      data: {
+    const voucher = await prisma.$transaction(async tx => {
+      const value = await tx.voucher.create({ data: {
         tenantId,
         code: cleanCode,
         discountType: (discountType as DiscountType) || DiscountType.PERCENT,
@@ -62,7 +63,9 @@ router.post('/', authenticateJWT, requireTenantIsolation, requirePermission('pro
         minimumOrder: minimumOrder !== undefined ? Number(minimumOrder) : 0,
         maximumDiscount: maximumDiscount ? Number(maximumDiscount) : null,
         isActive: true,
-      },
+      } });
+      await tx.auditLog.create({ data: { tenantId, ...auditActor(req), action: 'VOUCHER_CREATED', entity: 'Voucher', entityId: value.id, newValue: auditValue(value) } });
+      return value;
     });
 
     res.status(201).json({

@@ -102,10 +102,15 @@ async function main() {
     assert.equal(riderProfile.status,200); assert.ok(riderProfile.json.data.deliveries.length); assert.ok(riderProfile.json.data.activity.length);
     assert.ok(await db.auditLog.findFirst({where:{tenantId,entityId:codBefore.id,action:'COD_COLLECTED'}}));
     assert.ok(await db.auditLog.findFirst({where:{tenantId,entityId:codBefore.id,action:'COD_SETTLEMENT_CHANGED'}}));
+    assert.equal((await request(`/branches/${branch.id}/toggle`,users.TENANT_ADMIN,'PATCH')).status,200);
+    assert.equal((await request(`/products/${product.id}`,users.TENANT_ADMIN,'PUT',{basePrice:525})).status,200);
+    assert.equal((await request('/vouchers',users.TENANT_ADMIN,'POST',{code:'AUDIT',discountType:'FIXED',discountValue:25,minimumOrder:0})).status,201);
+    assert.equal((await request(`/tenants/${tenantId}/settings`,users.TENANT_ADMIN,'PUT',{deliveryFee:125})).status,200);
     assert.equal((await request('/audit',users.CUSTOMER)).status,403);
     assert.equal((await request('/audit',users.SUPPORT_STAFF)).status,403);
     const audit=await request(`/audit?action=COD&branchId=${branch.id}`,users.TENANT_ADMIN); assert.equal(audit.status,200,JSON.stringify(audit.json)); assert.ok(audit.json.data.records.length>=2); assert.ok(audit.json.data.records.every((entry:any)=>entry.branchId===branch.id && entry.actorRole));
-    console.log('PASS: database-backed ordering, isolation, sessions, staff/rider management, admin detail, secure chat/internal notes, COD accountability, and filtered audit authorization.');
+    const adminAudits=await request('/audit?limit=200',users.TENANT_ADMIN); assert.equal(adminAudits.status,200); for(const action of ['BRANCH_CLOSED','PRODUCT_PRICE_CHANGED','VOUCHER_CREATED','SETTINGS_CHANGED']) assert.ok(adminAudits.json.data.records.some((entry:any)=>entry.action===action),action);
+    console.log('PASS: database-backed ordering, isolation, sessions, operations, COD, and filtered audit authorization/coverage.');
   } finally {
     if(tenantId) { await db.auditLog.deleteMany({where:{tenantId}}); await db.tenant.delete({where:{id:tenantId}}); console.log('Temporary verification tenant removed.'); }
     await db.$disconnect();
